@@ -1,0 +1,11 @@
+math{
+    font-size: large;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+img{
+    max-width: 720px;
+    max-height: 400px;
+    /* width: auto;
+    height: auto; */
+}
