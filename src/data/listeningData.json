@@ -1,0 +1,95 @@
+[
+  {
+    "id": 1,
+    "audioFile": "/File_Listen/example4.mp3",
+    "questions": [
+      {
+        "id": 1,
+        "question": "What is the main topic of the audio?",
+        "options": ["A love story", "A business meeting", "A travel plan", "A school lesson"]
+      },
+      {
+        "id": 2,
+        "question": "Which word best describes the speaker’s feeling?",
+        "options": ["Happy", "Sad", "Excited", "Angry"]
+      },
+      {
+        "id": 3,
+        "question": "Where does the story take place?",
+        "options": ["In a park", "At a café", "At school", "At an airport"]
+      },
+      {
+        "id": 4,
+        "question": "What happened at the end of the story?",
+        "options": ["They met again", "They said goodbye", "They argued", "They made plans"]
+      },
+      {
+        "id": 5,
+        "question": "How does the speaker feel about the experience?",
+        "options": ["Nostalgic", "Indifferent", "Angry", "Excited"]
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "audioFile": "/File_Listen/example3.mp3",
+    "questions": [
+      {
+        "id": 1,
+        "question": "Where is the speaker going?",
+        "options": ["To the park", "To the office", "To the airport", "To the mall"]
+      },
+      {
+        "id": 2,
+        "question": "What time is the flight?",
+        "options": ["7 AM", "9 AM", "11 AM", "1 PM"]
+      },
+      {
+        "id": 3,
+        "question": "What does the speaker need to do before the flight?",
+        "options": ["Check in", "Buy food", "Call a friend", "Pack luggage"]
+      },
+      {
+        "id": 4,
+        "question": "Who is accompanying the speaker?",
+        "options": ["A friend", "A colleague", "A family member", "Alone"]
+      },
+      {
+        "id": 5,
+        "question": "What is the weather like in the audio?",
+        "options": ["Sunny", "Rainy", "Cloudy", "Snowy"]
+      }
+    ]
+  },
+  {
+    "id": 3,
+    "audioFile": "/File_Listen/example1.mp3",
+    "questions": [
+      {
+        "id": 1,
+        "question": "Bọn a cứ hẹ hẹ hẹ?",
+        "options": ["To the park", "To the office", "To the airport", "To the mall"]
+      },
+      {
+        "id": 2,
+        "question": "What time is the flight?",
+        "options": ["7 AM", "9 AM", "11 AM", "1 PM"]
+      },
+      {
+        "id": 3,
+        "question": "Ai là người nói trong đoạn audio?",
+        "options": ["Bạn bè", "Người thân", "Đồng nghiệp", "Người lạ"]
+      },
+      {
+        "id": 4,
+        "question": "Nội dung chính của đoạn audio là gì?",
+        "options": ["Kế hoạch đi chơi", "Cuộc họp", "Học bài", "Chuyện tình cảm"]
+      },
+      {
+        "id": 5,
+        "question": "Cảm xúc của người nói là gì?",
+        "options": ["Vui", "Buồn", "Hài hước", "Giận dữ"]
+      }
+    ]
+  }
+]

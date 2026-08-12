@@ -1,0 +1,7 @@
+{
+  "i18n-ally.localesPaths": [
+    "src/utils/locales"
+  ],
+  "dotenv.enableAutocloaking": false,
+  "C_Cpp_Runner.msvcBatchPath": ""
+}
