@@ -11,6 +11,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
   Switch,
@@ -55,18 +56,31 @@ const CouncilsPage = () => {
   const [monitors, setMonitors] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  // Phần người dùng gõ tiếp sau prefix "{mã địa điểm thi}." khi tạo mới hội đồng thi.
+  const [codeSuffix, setCodeSuffix] = useState('');
 
   useEffect(() => {
     councilMgmtService
       .getLookup('organizations')
       .then((res) => setOrganizations(res.data.data))
       .catch(() => {});
-    // role_id = 7: điểm trưởng
-    councilMgmtService
-      .getLookup('monitors', { role: 7 })
-      .then((res) => setMonitors(res.data.data))
-      .catch(() => {});
   }, []);
+
+  // role_id = 7: điểm trưởng. Chỉ nạp sau khi đã biết địa điểm thi, để lọc đúng theo organization_id.
+  const fetchMonitorsForOrg = async (organizationCode) => {
+    if (!organizationCode) {
+      setMonitors([]);
+      return [];
+    }
+    try {
+      const res = await councilMgmtService.getLookup('monitors', { role: 7, organization_code: organizationCode });
+      setMonitors(res.data.data);
+      return res.data.data;
+    } catch {
+      setMonitors([]);
+      return [];
+    }
+  };
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -91,11 +105,15 @@ const CouncilsPage = () => {
 
   const handleOpenCreate = () => {
     setEditing(null);
+    setMonitors([]);
+    setCodeSuffix('');
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (row) => {
     setEditing(row);
+    fetchMonitorsForOrg(row.organization_code);
+    setCodeSuffix('');
     setDialogOpen(true);
   };
 
@@ -209,15 +227,56 @@ const CouncilsPage = () => {
                 <Stack spacing={2} sx={{ mt: 1 }}>
                   <TextField
                     fullWidth
-                    label="Mã HĐ thi"
-                    name="code"
-                    value={values.code}
-                    onChange={handleChange}
+                    select
+                    label="Điểm thi"
+                    name="organization_code"
+                    value={values.organization_code}
+                    onChange={async (e) => {
+                      const orgCode = e.target.value;
+                      setFieldValue('organization_code', orgCode);
+                      if (!editing) {
+                        setFieldValue('code', orgCode ? `${orgCode}.${codeSuffix}` : codeSuffix);
+                      }
+                      const list = await fetchMonitorsForOrg(orgCode);
+                      setFieldValue('monitor_id', list.length > 0 ? list[0].id : '');
+                    }}
                     onBlur={handleBlur}
                     disabled={!!editing}
-                    error={Boolean(touched.code && errors.code)}
-                    helperText={touched.code && errors.code}
-                  />
+                    error={Boolean(touched.organization_code && errors.organization_code)}
+                    helperText={touched.organization_code && errors.organization_code}
+                  >
+                    {organizations.map((org) => (
+                      <MenuItem key={org.code} value={org.code}>
+                        {org.code} - {org.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                  {editing ? (
+                    <TextField fullWidth label="Mã HĐ thi" name="code" value={values.code} disabled />
+                  ) : (
+                    <TextField
+                      fullWidth
+                      label="Mã HĐ thi"
+                      name="codeSuffix"
+                      value={codeSuffix}
+                      onChange={(e) => {
+                        const suffix = e.target.value;
+                        setCodeSuffix(suffix);
+                        setFieldValue('code', values.organization_code ? `${values.organization_code}.${suffix}` : suffix);
+                      }}
+                      onBlur={handleBlur}
+                      disabled={!values.organization_code}
+                      InputProps={{
+                        startAdornment: values.organization_code && (
+                          <InputAdornment position="start">{values.organization_code}.</InputAdornment>
+                        )
+                      }}
+                      error={Boolean(touched.code && errors.code)}
+                      helperText={
+                        (touched.code && errors.code) || (!values.organization_code && 'Chọn điểm thi trước để xác định tiền tố mã')
+                      }
+                    />
+                  )}
                   <TextField
                     fullWidth
                     label="Diễn giải"
@@ -229,30 +288,18 @@ const CouncilsPage = () => {
                   <TextField
                     fullWidth
                     select
-                    label="Điểm thi"
-                    name="organization_code"
-                    value={values.organization_code}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={Boolean(touched.organization_code && errors.organization_code)}
-                    helperText={touched.organization_code && errors.organization_code}
-                  >
-                    {organizations.map((org) => (
-                      <MenuItem key={org.code} value={org.code}>
-                        {org.code} - {org.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    fullWidth
-                    select
                     label="Điểm trưởng"
                     name="monitor_id"
                     value={values.monitor_id}
                     onChange={handleChange}
                     onBlur={handleBlur}
+                    disabled={!values.organization_code}
                     error={Boolean(touched.monitor_id && errors.monitor_id)}
-                    helperText={touched.monitor_id && errors.monitor_id}
+                    helperText={
+                      (touched.monitor_id && errors.monitor_id) ||
+                      (values.organization_code && monitors.length === 0 && 'Điểm thi này chưa có điểm trưởng nào') ||
+                      (!values.organization_code && 'Chọn điểm thi trước để tự động chọn điểm trưởng')
+                    }
                   >
                     {monitors.map((m) => (
                       <MenuItem key={m.code} value={m.id}>

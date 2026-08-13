@@ -2,10 +2,10 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { BankOutlined, HomeOutlined, ApartmentOutlined } from '@ant-design/icons';
+import { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined } from '@ant-design/icons';
 
 // icons
-const icons = { BankOutlined, HomeOutlined, ApartmentOutlined };
+const icons = { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined };
 
 // ==============================|| MENU ITEMS - COUNCIL MANAGEMENT ||============================== //
 
@@ -34,6 +34,13 @@ const councilMgmt = {
       type: 'item',
       url: '/council-mgmt/councils',
       icon: icons.BankOutlined
+    },
+    {
+      id: 'examinees',
+      title: <FormattedMessage id="examinees" defaultMessage="Danh sách thí sinh" />,
+      type: 'item',
+      url: '/council-mgmt/examinees',
+      icon: icons.TeamOutlined
     }
   ]
 };
