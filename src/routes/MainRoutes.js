@@ -19,6 +19,7 @@ const OrganizationsPage = Loadable(lazy(() => import('pages/council-mgmt/organiz
 const RoomsPage = Loadable(lazy(() => import('pages/council-mgmt/rooms')));
 const CouncilsPage = Loadable(lazy(() => import('pages/council-mgmt/councils')));
 const CouncilTurnsPage = Loadable(lazy(() => import('pages/council-mgmt/councils/turns')));
+const ExamineesPage = Loadable(lazy(() => import('pages/council-mgmt/examinees')));
 
 // ==============================|| MAIN ROUTING ||============================== //
 
@@ -44,6 +45,10 @@ const MainRoutes = {
         {
           path: 'council-mgmt/councils/:code/turns',
           element: <CouncilTurnsPage />
+        },
+        {
+          path: 'council-mgmt/examinees',
+          element: <ExamineesPage />
         }
       ]
     },

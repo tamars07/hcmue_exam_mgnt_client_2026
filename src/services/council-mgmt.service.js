@@ -37,6 +37,18 @@ const updateCouncilTurn = (code, data) => axios.put(`${BASE}/council-turns/${cod
 const getCouncilTurnRooms = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/rooms`);
 const assignCouncilTurnRoom = (data) => axios.post(`${BASE}/council-turn-rooms`, data);
 const unassignCouncilTurnRoom = (id) => axios.delete(`${BASE}/council-turn-rooms/${id}`);
+// Xem thông tin phòng thi + giám thị (tài khoản/mật khẩu) + thí sinh của từng phòng trong ca thi
+const getCouncilTurnDetails = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/details`);
+// Kích hoạt phòng thi (cho phép thí sinh làm bài)
+const activateCouncilTurnRoom = (id) => axios.put(`${BASE}/council-turn-rooms/${id}/activate`);
+// Xuất phiếu tài khoản (docx) cho thí sinh trong phòng thi
+const exportCouncilTurnRoomAccounts = (id) => axios.get(`${BASE}/council-turn-rooms/${id}/export-accounts`, { responseType: 'blob' });
+
+// Examinees (thí sinh)
+const getExaminees = (params) => axios.get(`${BASE}/examinees`, { params: toListParams(params) });
+const importExamineesPreview = (formData) =>
+  axios.post(`${BASE}/examinees/import/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+const importExamineesCommit = (payload) => axios.post(`${BASE}/examinees/import/commit`, payload);
 
 // Lookups (dropdown)
 const getLookup = (type, params) => axios.get(`${BASE}/lookups/${type}`, { params });
@@ -59,6 +71,12 @@ const councilMgmtService = {
   getCouncilTurnRooms,
   assignCouncilTurnRoom,
   unassignCouncilTurnRoom,
+  getCouncilTurnDetails,
+  activateCouncilTurnRoom,
+  exportCouncilTurnRoomAccounts,
+  getExaminees,
+  importExamineesPreview,
+  importExamineesCommit,
   getLookup
 };
 

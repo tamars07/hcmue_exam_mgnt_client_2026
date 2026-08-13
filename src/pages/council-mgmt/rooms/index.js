@@ -10,6 +10,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
   Switch,
@@ -30,7 +31,10 @@ import councilMgmtService from 'services/council-mgmt.service';
 
 // ==============================|| ROOMS - LIST ||============================== //
 
-const emptyValues = { code: '', name: '', desc: '', no_slots: 0, organization_code: '', status: true };
+const emptyValues = { organization_code: '', name: '', code: '', no_slots: 0, desc: '', status: true };
+
+// Mã phòng mặc định = {mã địa điểm thi}.{tên phòng}, chỉ áp dụng khi thêm mới và chưa mở khoá sửa tay.
+const buildRoomCode = (organizationCode, name) => [organizationCode, name].filter(Boolean).join('.');
 
 const RoomsPage = () => {
   const [rows, setRows] = useState([]);
@@ -38,9 +42,11 @@ const RoomsPage = () => {
   const [loading, setLoading] = useState(false);
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 10 });
   const [search, setSearch] = useState('');
+  const [organizationFilter, setOrganizationFilter] = useState('');
   const [organizations, setOrganizations] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [codeLocked, setCodeLocked] = useState(true);
 
   useEffect(() => {
     councilMgmtService
@@ -55,7 +61,8 @@ const RoomsPage = () => {
       const res = await councilMgmtService.getRooms({
         page: paginationModel.page,
         pageSize: paginationModel.pageSize,
-        search
+        search,
+        organization_code: organizationFilter || undefined
       });
       setRows(res.data.data.items);
       setRowCount(res.data.data.total);
@@ -64,7 +71,7 @@ const RoomsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [paginationModel, search]);
+  }, [paginationModel, search, organizationFilter]);
 
   useEffect(() => {
     fetchRows();
@@ -72,11 +79,13 @@ const RoomsPage = () => {
 
   const handleOpenCreate = () => {
     setEditing(null);
+    setCodeLocked(true);
     setDialogOpen(true);
   };
 
   const handleOpenEdit = (row) => {
     setEditing(row);
+    setCodeLocked(true);
     setDialogOpen(true);
   };
 
@@ -154,16 +163,36 @@ const RoomsPage = () => {
       }
     >
       <Stack spacing={2}>
-        <TextField
-          size="small"
-          label="Tìm kiếm (mã / tên)"
-          value={search}
-          onChange={(e) => {
-            setPaginationModel((m) => ({ ...m, page: 0 }));
-            setSearch(e.target.value);
-          }}
-          sx={{ maxWidth: 320 }}
-        />
+        <Stack direction="row" spacing={2}>
+          <TextField
+            size="small"
+            label="Tìm kiếm (mã / tên)"
+            value={search}
+            onChange={(e) => {
+              setPaginationModel((m) => ({ ...m, page: 0 }));
+              setSearch(e.target.value);
+            }}
+            sx={{ maxWidth: 320 }}
+          />
+          <TextField
+            select
+            size="small"
+            label="Điểm thi"
+            value={organizationFilter}
+            onChange={(e) => {
+              setPaginationModel((m) => ({ ...m, page: 0 }));
+              setOrganizationFilter(e.target.value);
+            }}
+            sx={{ minWidth: 260 }}
+          >
+            <MenuItem value="">Tất cả điểm thi</MenuItem>
+            {organizations.map((org) => (
+              <MenuItem key={org.code} value={org.code}>
+                {org.code} - {org.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
         <DataGrid
           autoHeight
           rows={rows}
@@ -198,32 +227,16 @@ const RoomsPage = () => {
                 <Stack spacing={2} sx={{ mt: 1 }}>
                   <TextField
                     fullWidth
-                    label="Mã phòng"
-                    name="code"
-                    value={values.code}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    disabled={!!editing}
-                    error={Boolean(touched.code && errors.code)}
-                    helperText={touched.code && errors.code}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Tên phòng"
-                    name="name"
-                    value={values.name}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={Boolean(touched.name && errors.name)}
-                    helperText={touched.name && errors.name}
-                  />
-                  <TextField
-                    fullWidth
                     select
                     label="Địa điểm thi"
                     name="organization_code"
                     value={values.organization_code}
-                    onChange={handleChange}
+                    onChange={(e) => {
+                      setFieldValue('organization_code', e.target.value);
+                      if (!editing && codeLocked) {
+                        setFieldValue('code', buildRoomCode(e.target.value, values.name));
+                      }
+                    }}
                     onBlur={handleBlur}
                     error={Boolean(touched.organization_code && errors.organization_code)}
                     helperText={touched.organization_code && errors.organization_code}
@@ -234,6 +247,58 @@ const RoomsPage = () => {
                       </MenuItem>
                     ))}
                   </TextField>
+                  <TextField
+                    fullWidth
+                    label="Tên phòng"
+                    name="name"
+                    value={values.name}
+                    onChange={(e) => {
+                      setFieldValue('name', e.target.value);
+                      if (!editing && codeLocked) {
+                        setFieldValue('code', buildRoomCode(values.organization_code, e.target.value));
+                      }
+                    }}
+                    onBlur={handleBlur}
+                    error={Boolean(touched.name && errors.name)}
+                    helperText={touched.name && errors.name}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Mã phòng"
+                    name="code"
+                    value={values.code}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    disabled={!!editing || codeLocked}
+                    error={Boolean(touched.code && errors.code)}
+                    helperText={
+                      (touched.code && errors.code) ||
+                      (!editing && codeLocked && 'Tự động theo Địa điểm thi + Tên phòng. Nhấn "Chỉnh sửa" để đặt tay.')
+                    }
+                    InputProps={
+                      !editing
+                        ? {
+                            endAdornment: (
+                              <InputAdornment position="end">
+                                <Button
+                                  size="small"
+                                  onClick={() => {
+                                    if (codeLocked) {
+                                      setCodeLocked(false);
+                                    } else {
+                                      setCodeLocked(true);
+                                      setFieldValue('code', buildRoomCode(values.organization_code, values.name));
+                                    }
+                                  }}
+                                >
+                                  {codeLocked ? 'Chỉnh sửa' : 'Tự động'}
+                                </Button>
+                              </InputAdornment>
+                            )
+                          }
+                        : undefined
+                    }
+                  />
                   <TextField
                     fullWidth
                     type="number"
