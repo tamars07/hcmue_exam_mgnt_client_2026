@@ -43,6 +43,12 @@ const getCouncilTurnDetails = (councilTurnCode) => axios.get(`${BASE}/council-tu
 const activateCouncilTurnRoom = (id) => axios.put(`${BASE}/council-turn-rooms/${id}/activate`);
 // Xuất phiếu tài khoản (docx) cho thí sinh trong phòng thi
 const exportCouncilTurnRoomAccounts = (id) => axios.get(`${BASE}/council-turn-rooms/${id}/export-accounts`, { responseType: 'blob' });
+// Xuất phiếu tài khoản (docx) của nhiều phòng thi cùng lúc, đóng gói vào 1 file .zip
+const exportCouncilTurnRoomAccountsZip = (ids) =>
+  axios.post(`${BASE}/council-turn-rooms/export-accounts-zip`, { ids }, { responseType: 'blob' });
+// Xuất file Excel tài khoản cán bộ coi thi (kèm điểm trưởng) của toàn bộ phòng thi trong 1 ca thi
+const exportCouncilTurnMonitorAccounts = (councilTurnCode) =>
+  axios.get(`${BASE}/council-turns/${councilTurnCode}/export-monitor-accounts`, { responseType: 'blob' });
 
 // Examinees (thí sinh)
 const getExaminees = (params) => axios.get(`${BASE}/examinees`, { params: toListParams(params) });
@@ -74,6 +80,8 @@ const councilMgmtService = {
   getCouncilTurnDetails,
   activateCouncilTurnRoom,
   exportCouncilTurnRoomAccounts,
+  exportCouncilTurnRoomAccountsZip,
+  exportCouncilTurnMonitorAccounts,
   getExaminees,
   importExamineesPreview,
   importExamineesCommit,

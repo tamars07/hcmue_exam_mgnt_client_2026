@@ -30,7 +30,16 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import { ArrowLeftOutlined, DownOutlined, EditOutlined, FileWordOutlined, TeamOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+  ArrowLeftOutlined,
+  DownOutlined,
+  EditOutlined,
+  FileExcelOutlined,
+  FileWordOutlined,
+  FileZipOutlined,
+  TeamOutlined,
+  ThunderboltOutlined
+} from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -40,10 +49,25 @@ import * as Yup from 'yup';
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
+import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 // ==============================|| COUNCIL TURNS - LIST ||============================== //
 
+const examStatusColor = (status) => {
+  switch (status) {
+    case 'Nộp bài':
+      return 'success';
+    case 'Đang thi':
+      return 'warning';
+    case 'Chờ thi':
+      return 'info';
+    default:
+      return 'default';
+  }
+};
+
 const CouncilTurnsPage = () => {
+  const { withLoading } = useLoadingOverlay();
   const { code: councilCode } = useParams();
   const [council, setCouncil] = useState(null);
   const [turns, setTurns] = useState([]);
@@ -68,6 +92,13 @@ const CouncilTurnsPage = () => {
   const [activateTarget, setActivateTarget] = useState(null);
   const [activating, setActivating] = useState(false);
   const [exportingId, setExportingId] = useState(null);
+
+  // Chọn nhiều phòng để tải gộp phiếu tài khoản vào 1 file .zip (chỉ áp dụng cho ca thi đang mở rộng).
+  const [selectedZipIds, setSelectedZipIds] = useState([]);
+  const [zipping, setZipping] = useState(false);
+
+  // Tải file Excel tài khoản cán bộ coi thi (kèm điểm trưởng) của toàn bộ 1 ca thi.
+  const [monitorExportingCode, setMonitorExportingCode] = useState(null);
 
   const fetchTurns = useCallback(async () => {
     try {
@@ -110,6 +141,7 @@ const CouncilTurnsPage = () => {
 
   const handleAccordionChange = (turnCode) => (event, isExpanded) => {
     setExpandedTurnCode(isExpanded ? turnCode : false);
+    setSelectedZipIds([]);
     if (isExpanded && !turnDetailsByCode[turnCode]) {
       fetchTurnDetails(turnCode);
     }
@@ -138,15 +170,17 @@ const CouncilTurnsPage = () => {
 
   const handleSubmitEdit = async (values, { setSubmitting }) => {
     try {
-      await councilMgmtService.updateCouncilTurn(editingTurn.code, values);
+      await withLoading(async () => {
+        await councilMgmtService.updateCouncilTurn(editingTurn.code, values);
 
-      const toAdd = selectedRoomCodes.filter((code) => !originalAssignedRooms.some((r) => r.room_code === code));
-      const toRemove = originalAssignedRooms.filter((r) => !selectedRoomCodes.includes(r.room_code));
+        const toAdd = selectedRoomCodes.filter((code) => !originalAssignedRooms.some((r) => r.room_code === code));
+        const toRemove = originalAssignedRooms.filter((r) => !selectedRoomCodes.includes(r.room_code));
 
-      await Promise.all([
-        ...toAdd.map((code) => councilMgmtService.assignCouncilTurnRoom({ council_turn_code: editingTurn.code, room_code: code })),
-        ...toRemove.map((r) => councilMgmtService.unassignCouncilTurnRoom(r.id))
-      ]);
+        await Promise.all([
+          ...toAdd.map((code) => councilMgmtService.assignCouncilTurnRoom({ council_turn_code: editingTurn.code, room_code: code })),
+          ...toRemove.map((r) => councilMgmtService.unassignCouncilTurnRoom(r.id))
+        ]);
+      }, 'Đang lưu ca thi... Vui lòng chờ');
 
       openSnackbar({ open: true, message: 'Lưu thành công', variant: 'alert', alert: { color: 'success' } });
       setEditDialogOpen(false);
@@ -166,7 +200,10 @@ const CouncilTurnsPage = () => {
     if (!activateTarget) return;
     setActivating(true);
     try {
-      await councilMgmtService.activateCouncilTurnRoom(activateTarget.council_turn_room_id);
+      await withLoading(
+        () => councilMgmtService.activateCouncilTurnRoom(activateTarget.council_turn_room_id),
+        'Đang kích hoạt phòng thi... Vui lòng chờ'
+      );
       openSnackbar({ open: true, message: 'Kích hoạt phòng thi thành công', variant: 'alert', alert: { color: 'success' } });
       setActivateTarget(null);
       if (expandedTurnCode) fetchTurnDetails(expandedTurnCode);
@@ -180,7 +217,10 @@ const CouncilTurnsPage = () => {
   const handleExportAccounts = async (detail) => {
     setExportingId(detail.council_turn_room_id);
     try {
-      const res = await councilMgmtService.exportCouncilTurnRoomAccounts(detail.council_turn_room_id);
+      const res = await withLoading(
+        () => councilMgmtService.exportCouncilTurnRoomAccounts(detail.council_turn_room_id),
+        'Đang xuất phiếu tài khoản... Vui lòng chờ'
+      );
       const blob = new Blob([res.data], {
         type: res.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       });
@@ -201,6 +241,65 @@ const CouncilTurnsPage = () => {
     }
   };
 
+  const handleExportMonitorAccounts = async (turnCode) => {
+    setMonitorExportingCode(turnCode);
+    try {
+      const res = await withLoading(
+        () => councilMgmtService.exportCouncilTurnMonitorAccounts(turnCode),
+        'Đang tải tài khoản cán bộ coi thi... Vui lòng chờ'
+      );
+      const blob = new Blob([res.data], {
+        type: res.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${turnCode}-Tai-khoan-giam-thi.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      openSnackbar({
+        open: true,
+        message: e?.message || 'Tải tài khoản cán bộ coi thi thất bại',
+        variant: 'alert',
+        alert: { color: 'error' }
+      });
+    } finally {
+      setMonitorExportingCode(null);
+    }
+  };
+
+  const toggleZipSelection = (id, checked) => {
+    setSelectedZipIds((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id)));
+  };
+
+  const handleDownloadZip = async (turnCode) => {
+    setZipping(true);
+    try {
+      const res = await withLoading(
+        () => councilMgmtService.exportCouncilTurnRoomAccountsZip(selectedZipIds),
+        'Đang đóng gói phiếu tài khoản (.zip)... Vui lòng chờ'
+      );
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      // Đặt tên file trực tiếp theo mã ca thi (không phụ thuộc header Content-Disposition — header
+      // này không được CORS "expose" cho JS đọc khi FE/BE khác origin, nên luôn lấy fallback trước đây).
+      a.download = `${turnCode}-phieu-tai-khoan.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      openSnackbar({ open: true, message: 'Tải phiếu tài khoản thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setZipping(false);
+    }
+  };
+
   return (
     <MainCard
       title={council ? `Ca thi - Hội đồng thi ${council.code} - ${council.desc || ''}` : 'Ca thi'}
@@ -217,7 +316,11 @@ const CouncilTurnsPage = () => {
       )}
 
       {turns.map((turn) => {
-        const details = turnDetailsByCode[turn.code] || [];
+        const details = [...(turnDetailsByCode[turn.code] || [])].sort((a, b) =>
+          a.room.code.localeCompare(b.room.code, 'vi', { numeric: true, sensitivity: 'base' })
+        );
+        const allSelected = details.length > 0 && selectedZipIds.length === details.length;
+        const someSelected = selectedZipIds.length > 0 && !allSelected;
         return (
           <Accordion key={turn.code} expanded={expandedTurnCode === turn.code} onChange={handleAccordionChange(turn.code)}>
             <AccordionSummary expandIcon={<DownOutlined />}>
@@ -230,10 +333,22 @@ const CouncilTurnsPage = () => {
                 </Typography>
                 <Chip label={`${turn.no_rooms} phòng`} size="small" />
                 <Chip label={turn.status ? 'Sử dụng' : 'Ẩn'} color={turn.status ? 'success' : 'default'} size="small" />
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<FileExcelOutlined />}
+                  sx={{ ml: 'auto' }}
+                  disabled={monitorExportingCode === turn.code}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleExportMonitorAccounts(turn.code);
+                  }}
+                >
+                  {monitorExportingCode === turn.code ? 'Đang tải...' : 'Tải tài khoản cán bộ coi thi'}
+                </Button>
                 <Tooltip title="Chỉnh sửa ca thi">
                   <IconButton
                     size="small"
-                    sx={{ ml: 'auto' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleOpenEdit(turn);
@@ -251,10 +366,39 @@ const CouncilTurnsPage = () => {
                 <Typography color="text.secondary">Ca thi này chưa gán phòng thi nào.</Typography>
               ) : (
                 <Stack spacing={1.5}>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={allSelected}
+                          indeterminate={someSelected}
+                          onChange={(e) =>
+                            setSelectedZipIds(e.target.checked ? details.map((d) => d.council_turn_room_id) : [])
+                          }
+                        />
+                      }
+                      label="Chọn tất cả"
+                    />
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<FileZipOutlined />}
+                      disabled={selectedZipIds.length === 0 || zipping}
+                      onClick={() => handleDownloadZip(turn.code)}
+                    >
+                      {zipping ? 'Đang đóng gói...' : `Tải phiếu tài khoản đã chọn (.zip) (${selectedZipIds.length})`}
+                    </Button>
+                  </Stack>
                   {details.map((detail) => (
                     <Box key={detail.council_turn_room_id} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 1.5 }}>
                       <Stack spacing={1}>
                         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={0.5}>
+                          <Checkbox
+                            size="small"
+                            checked={selectedZipIds.includes(detail.council_turn_room_id)}
+                            onChange={(e) => toggleZipSelection(detail.council_turn_room_id, e.target.checked)}
+                            sx={{ p: 0 }}
+                          />
                           <Typography sx={{ fontWeight: 500, minWidth: 140 }}>
                             {detail.room.code} - {detail.room.name}
                           </Typography>
@@ -290,7 +434,12 @@ const CouncilTurnsPage = () => {
                               Kích hoạt phòng thi
                             </Button>
                           )}
-                          <Button size="small" variant="outlined" startIcon={<TeamOutlined />} onClick={() => setExamineeDialog(detail)}>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            startIcon={<TeamOutlined />}
+                            onClick={() => setExamineeDialog({ ...detail, turnName: turn.name })}
+                          >
                             Xem danh sách thí sinh ({detail.examinee_count})
                           </Button>
                           <Button
@@ -414,7 +563,7 @@ const CouncilTurnsPage = () => {
       {/* Dialog danh sách thí sinh của 1 phòng thi */}
       <Dialog open={!!examineeDialog} onClose={() => setExamineeDialog(null)} fullWidth maxWidth="lg">
         <DialogTitle>
-          Danh sách thí sinh - {examineeDialog?.room?.code} {examineeDialog?.room?.name}
+          Danh sách thí sinh - {examineeDialog?.turnName} - {examineeDialog?.room?.name}
         </DialogTitle>
         <DialogContent dividers>
           {!examineeDialog || examineeDialog.examinees.length === 0 ? (
@@ -424,29 +573,39 @@ const CouncilTurnsPage = () => {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>IP máy thí sinh</TableCell>
-                    <TableCell>Số báo danh</TableCell>
-                    <TableCell>Tên tài khoản</TableCell>
-                    <TableCell>Mật khẩu</TableCell>
+                    <TableCell>Vị trí máy</TableCell>
+                    <TableCell>IP máy</TableCell>
+                    <TableCell>CCCD/MSSV</TableCell>
                     <TableCell>Họ lót</TableCell>
                     <TableCell>Tên</TableCell>
                     <TableCell>Môn thi</TableCell>
-                    <TableCell>Ca thi</TableCell>
-                    <TableCell>Phòng thi</TableCell>
+                    <TableCell>Tài khoản</TableCell>
+                    <TableCell>Mật khẩu</TableCell>
+                    <TableCell>Loại tài khoản</TableCell>
+                    <TableCell>Trạng thái</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {examineeDialog.examinees.map((examinee) => (
                     <TableRow key={examinee.code}>
+                      <TableCell>{examinee.seat_number ?? '—'}</TableCell>
                       <TableCell>{examinee.ip_address || '—'}</TableCell>
-                      <TableCell>{examinee.code}</TableCell>
-                      <TableCell>{examinee.username || '—'}</TableCell>
-                      <TableCell>{examinee.password}</TableCell>
+                      <TableCell>{examinee.id_card_number}</TableCell>
                       <TableCell>{examinee.lastname}</TableCell>
                       <TableCell>{examinee.firstname}</TableCell>
                       <TableCell>{examinee.subject || '—'}</TableCell>
-                      <TableCell>{examinee.council_turn_code}</TableCell>
-                      <TableCell>{examinee.room_code}</TableCell>
+                      <TableCell>{examinee.username || '—'}</TableCell>
+                      <TableCell>{examinee.password}</TableCell>
+                      <TableCell>
+                        {examinee.is_backup ? (
+                          <Chip label="Dự phòng" size="small" color="warning" />
+                        ) : (
+                          <Chip label="Chính thức" size="small" />
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Chip label={examinee.exam_status} size="small" color={examStatusColor(examinee.exam_status)} />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

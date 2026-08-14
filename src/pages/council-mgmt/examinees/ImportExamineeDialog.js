@@ -29,10 +29,12 @@ import { UploadOutlined } from '@ant-design/icons';
 // project import
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
+import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 // ==============================|| IMPORT THÍ SINH TỪ EXCEL ||============================== //
 
 const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCode, defaultRoomCode, onImported }) => {
+  const { withLoading } = useLoadingOverlay();
   const [councils, setCouncils] = useState([]);
   const [turns, setTurns] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -98,7 +100,10 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
         formData.append('council_turn_code', turnCode);
         if (roomCode) formData.append('room_code', roomCode);
       }
-      const res = await councilMgmtService.importExamineesPreview(formData);
+      const res = await withLoading(
+        () => councilMgmtService.importExamineesPreview(formData),
+        'Đang xem trước file import... Vui lòng chờ'
+      );
       setPreviewResult(res.data.data);
       setStep('preview');
     } catch (e) {
@@ -111,7 +116,10 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
   const handleCommit = async () => {
     setCommitting(true);
     try {
-      const res = await councilMgmtService.importExamineesCommit({ import_token: previewResult.import_token });
+      const res = await withLoading(
+        () => councilMgmtService.importExamineesCommit({ import_token: previewResult.import_token }),
+        'Đang import thí sinh vào hệ thống... Vui lòng chờ'
+      );
       setCommitResult(res.data.data);
       openSnackbar({
         open: true,
