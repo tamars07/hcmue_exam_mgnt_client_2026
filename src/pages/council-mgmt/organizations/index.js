@@ -26,12 +26,14 @@ import * as Yup from 'yup';
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
+import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 // ==============================|| ORGANIZATIONS - LIST ||============================== //
 
 const emptyValues = { code: '', name: '', address: '', status: true };
 
 const OrganizationsPage = () => {
+  const { withLoading } = useLoadingOverlay();
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -74,7 +76,7 @@ const OrganizationsPage = () => {
   const handleDelete = async (row) => {
     if (!window.confirm(`Xoá địa điểm thi "${row.name}"?`)) return;
     try {
-      await councilMgmtService.deleteOrganization(row.code);
+      await withLoading(() => councilMgmtService.deleteOrganization(row.code), 'Đang xoá địa điểm thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
       fetchRows();
     } catch (e) {
@@ -84,11 +86,13 @@ const OrganizationsPage = () => {
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     try {
-      if (editing) {
-        await councilMgmtService.updateOrganization(editing.code, values);
-      } else {
-        await councilMgmtService.createOrganization(values);
-      }
+      await withLoading(async () => {
+        if (editing) {
+          await councilMgmtService.updateOrganization(editing.code, values);
+        } else {
+          await councilMgmtService.createOrganization(values);
+        }
+      }, 'Đang lưu địa điểm thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Lưu thành công', variant: 'alert', alert: { color: 'success' } });
       setDialogOpen(false);
       fetchRows();

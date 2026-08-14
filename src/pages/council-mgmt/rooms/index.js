@@ -28,6 +28,7 @@ import * as Yup from 'yup';
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
+import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 // ==============================|| ROOMS - LIST ||============================== //
 
@@ -37,6 +38,7 @@ const emptyValues = { organization_code: '', name: '', code: '', no_slots: 0, de
 const buildRoomCode = (organizationCode, name) => [organizationCode, name].filter(Boolean).join('.');
 
 const RoomsPage = () => {
+  const { withLoading } = useLoadingOverlay();
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -92,7 +94,7 @@ const RoomsPage = () => {
   const handleDelete = async (row) => {
     if (!window.confirm(`Xoá phòng thi "${row.name}"?`)) return;
     try {
-      await councilMgmtService.deleteRoom(row.code);
+      await withLoading(() => councilMgmtService.deleteRoom(row.code), 'Đang xoá phòng thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
       fetchRows();
     } catch (e) {
@@ -102,11 +104,13 @@ const RoomsPage = () => {
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     try {
-      if (editing) {
-        await councilMgmtService.updateRoom(editing.code, values);
-      } else {
-        await councilMgmtService.createRoom(values);
-      }
+      await withLoading(async () => {
+        if (editing) {
+          await councilMgmtService.updateRoom(editing.code, values);
+        } else {
+          await councilMgmtService.createRoom(values);
+        }
+      }, 'Đang lưu phòng thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Lưu thành công', variant: 'alert', alert: { color: 'success' } });
       setDialogOpen(false);
       fetchRows();

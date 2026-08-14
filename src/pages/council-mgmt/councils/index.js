@@ -29,6 +29,7 @@ import * as Yup from 'yup';
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
+import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 // ==============================|| COUNCILS - LIST ||============================== //
 
@@ -47,6 +48,7 @@ const emptyValues = {
 
 const CouncilsPage = () => {
   const navigate = useNavigate();
+  const { withLoading } = useLoadingOverlay();
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -119,11 +121,13 @@ const CouncilsPage = () => {
 
   const handleSubmit = async (values, { setSubmitting, setErrors }) => {
     try {
-      if (editing) {
-        await councilMgmtService.updateCouncil(editing.code, values);
-      } else {
-        await councilMgmtService.createCouncil(values);
-      }
+      await withLoading(async () => {
+        if (editing) {
+          await councilMgmtService.updateCouncil(editing.code, values);
+        } else {
+          await councilMgmtService.createCouncil(values);
+        }
+      }, 'Đang lưu hội đồng thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Lưu thành công', variant: 'alert', alert: { color: 'success' } });
       setDialogOpen(false);
       fetchRows();
