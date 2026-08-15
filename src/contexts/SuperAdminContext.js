@@ -49,7 +49,7 @@ export const SuperAdminProvider = ({ children }) => {
         if (serviceToken && verifyToken(serviceToken)) {
           setSession(serviceToken);
           const response = await axios.get('api/system/auth/me');
-          const { user } = response.data.data;
+          const user = response.data.data;
           dispatch({
             type: LOGIN,
             payload: {
