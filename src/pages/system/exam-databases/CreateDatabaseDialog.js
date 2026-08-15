@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  InputAdornment,
   MenuItem,
   Radio,
   RadioGroup,
@@ -24,6 +25,7 @@ import systemAdminService from 'services/system-admin.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 const DB_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
+const DB_NAME_PREFIX = 'hcmue_council_';
 
 const CREATE_MODE_MESSAGE = {
   migrate: 'Đang tạo database và dựng cấu trúc + dữ liệu mẫu... Vui lòng chờ',
@@ -54,10 +56,11 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
     }
   }, [open]);
 
+  const usesPrefix = mode !== 'register';
+  const fullDbName = usesPrefix ? `${DB_NAME_PREFIX}${dbName}` : dbName;
   const dbNameValid = dbName && DB_NAME_REGEX.test(dbName);
 
   const canSubmit =
-    label &&
     dbNameValid &&
     !submitting &&
     (mode !== 'restore' || (restoreSource === 'upload' ? !!file : !!sourceBackupId));
@@ -66,8 +69,8 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
     setSubmitting(true);
     try {
       const formData = new FormData();
-      formData.append('label', label);
-      formData.append('db_name', dbName);
+      formData.append('label', label.trim() || fullDbName);
+      formData.append('db_name', fullDbName);
       formData.append('mode', mode);
       if (mode === 'restore') {
         if (restoreSource === 'upload' && file) {
@@ -92,7 +95,14 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
       <DialogTitle>Thêm mới database kỳ thi</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
-          <RadioGroup row value={mode} onChange={(e) => setMode(e.target.value)}>
+          <RadioGroup
+            row
+            value={mode}
+            onChange={(e) => {
+              setMode(e.target.value);
+              setDbName('');
+            }}
+          >
             <FormControlLabel value="migrate" control={<Radio />} label="Tạo trống (migrate cấu trúc)" />
             <FormControlLabel value="restore" control={<Radio />} label="Từ file backup" />
             <FormControlLabel value="register" control={<Radio />} label="Đăng ký DB có sẵn" />
@@ -111,20 +121,29 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
             </Alert>
           )}
 
-          <TextField fullWidth label="Tên hiển thị (label)" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
           <TextField
             fullWidth
             label="Tên database (db_name)"
             value={dbName}
             onChange={(e) => setDbName(e.target.value.trim())}
             error={!!dbName && !dbNameValid}
+            autoFocus
+            InputProps={usesPrefix ? { startAdornment: <InputAdornment position="start">{DB_NAME_PREFIX}</InputAdornment> } : undefined}
             helperText={
               dbName && !dbNameValid
                 ? 'Chỉ cho phép chữ, số và dấu gạch dưới'
                 : mode === 'register'
                 ? 'Phải trùng khớp tên database đã tồn tại trên server'
-                : 'Chưa tồn tại trên server'
+                : `Sẽ tạo database tên: ${fullDbName || DB_NAME_PREFIX}`
             }
+          />
+          <TextField
+            fullWidth
+            label="Tên hiển thị (label)"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder={fullDbName || 'Để trống sẽ tự lấy theo tên database'}
+            helperText="Để trống sẽ tự đặt giống tên database"
           />
 
           {mode === 'restore' && (
