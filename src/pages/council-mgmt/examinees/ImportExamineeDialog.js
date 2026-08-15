@@ -24,7 +24,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { UploadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 
 // project import
 import { openSnackbar } from 'api/snackbar';
@@ -50,6 +50,7 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
   const [previewResult, setPreviewResult] = useState(null);
   const [committing, setCommitting] = useState(false);
   const [commitResult, setCommitResult] = useState(null);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -86,7 +87,9 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
     }
     councilMgmtService
       .getCouncilTurnDetails(turnCode)
-      .then((res) => setRooms(res.data.data.map((d) => d.room)))
+      .then((res) =>
+        setRooms(res.data.data.map((d) => d.room).sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true })))
+      )
       .catch(() => setRooms([]));
   }, [scope, turnCode]);
 
@@ -110,6 +113,29 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
       openSnackbar({ open: true, message: e?.message || 'Xem trước thất bại', variant: 'alert', alert: { color: 'error' } });
     } finally {
       setPreviewLoading(false);
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    setDownloadingTemplate(true);
+    try {
+      const res = await councilMgmtService.downloadExamineeImportTemplate({
+        council_code: councilCode || undefined,
+        council_turn_code: scope === 'turn' ? turnCode || undefined : undefined
+      });
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Mau_import_thi_sinh.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Tải file mẫu thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setDownloadingTemplate(false);
     }
   };
 
@@ -154,7 +180,7 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
             >
               {councils.map((c) => (
                 <MenuItem key={c.code} value={c.code}>
-                  {c.code} {c.desc ? `- ${c.desc}` : ''}
+                  {c.desc || c.code}
                 </MenuItem>
               ))}
             </TextField>
@@ -187,7 +213,7 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
                 >
                   {turns.map((t) => (
                     <MenuItem key={t.code} value={t.code}>
-                      {t.code} - {t.name}
+                      {t.name}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -202,7 +228,7 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
                   <MenuItem value="">Tất cả phòng thi trong ca thi</MenuItem>
                   {rooms.map((r) => (
                     <MenuItem key={r.code} value={r.code}>
-                      {r.code} - {r.name}
+                      {r.name}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -215,14 +241,24 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
             )}
 
             <Alert severity="info">
-              Cột <strong>tai_khoan</strong>/<strong>mat_khau</strong> để trống sẽ được hệ thống tự sinh: tài khoản theo quy tắc &quot;mã
-              hội đồng thi + số thứ tự&quot;, mật khẩu ngẫu nhiên 6 chữ số.
+              Cột <strong>tai_khoan</strong> bắt buộc phải có, không được để trống. Cột <strong>mat_khau</strong> nếu để trống sẽ được hệ
+              thống tự sinh ngẫu nhiên 6 chữ số.
             </Alert>
 
-            <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
-              {file ? file.name : 'Chọn file Excel (.xlsx, .xls)'}
-              <input type="file" hidden accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files[0] || null)} />
-            </Button>
+            <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={1}>
+              <Button
+                variant="text"
+                startIcon={<DownloadOutlined />}
+                disabled={downloadingTemplate}
+                onClick={handleDownloadTemplate}
+              >
+                {downloadingTemplate ? 'Đang tải file mẫu...' : 'Tải file mẫu'}
+              </Button>
+              <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
+                {file ? file.name : 'Chọn file Excel (.xlsx, .xls)'}
+                <input type="file" hidden accept=".xlsx,.xls" onChange={(e) => setFile(e.target.files[0] || null)} />
+              </Button>
+            </Stack>
           </Stack>
         )}
 
@@ -269,15 +305,7 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
                           <TableCell>
                             {row.data.ho} {row.data.ten}
                           </TableCell>
-                          <TableCell>
-                            {row.data.tai_khoan}
-                            {row.generated?.tai_khoan && (
-                              <Typography component="span" variant="caption" color="text.secondary">
-                                {' '}
-                                (tự sinh)
-                              </Typography>
-                            )}
-                          </TableCell>
+                          <TableCell>{row.data.tai_khoan}</TableCell>
                           <TableCell>
                             {row.data.mat_khau}
                             {row.generated?.mat_khau && (

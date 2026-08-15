@@ -61,7 +61,9 @@ const ExamineesPage = () => {
     }
     councilMgmtService
       .getCouncilTurnDetails(turnCode)
-      .then((res) => setRooms(res.data.data.map((d) => d.room)))
+      .then((res) =>
+        setRooms(res.data.data.map((d) => d.room).sort((a, b) => a.name.localeCompare(b.name, 'vi', { numeric: true })))
+      )
       .catch(() => setRooms([]));
   }, [turnCode]);
 
@@ -163,7 +165,7 @@ const ExamineesPage = () => {
             >
               {councils.map((c) => (
                 <MenuItem key={c.code} value={c.code}>
-                  {c.code} {c.desc ? `- ${c.desc}` : ''}
+                  {c.desc || c.code}
                 </MenuItem>
               ))}
             </TextField>
@@ -182,7 +184,7 @@ const ExamineesPage = () => {
               <MenuItem value="">Tất cả ca thi</MenuItem>
               {turns.map((t) => (
                 <MenuItem key={t.code} value={t.code}>
-                  {t.code} - {t.name}
+                  {t.name}
                 </MenuItem>
               ))}
             </TextField>
@@ -198,7 +200,7 @@ const ExamineesPage = () => {
               <MenuItem value="">Tất cả phòng thi</MenuItem>
               {rooms.map((r) => (
                 <MenuItem key={r.code} value={r.code}>
-                  {r.code} - {r.name}
+                  {r.name}
                 </MenuItem>
               ))}
             </TextField>

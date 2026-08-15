@@ -52,6 +52,9 @@ const exportCouncilTurnMonitorAccounts = (councilTurnCode) =>
 
 // Examinees (thí sinh)
 const getExaminees = (params) => axios.get(`${BASE}/examinees`, { params: toListParams(params) });
+// Tải file Excel mẫu để import thí sinh — kèm council_code/council_turn_code (nếu có) để dòng ví dụ
+// dùng tên môn thi/phòng thi/ca thi có thật của hội đồng đang chọn.
+const downloadExamineeImportTemplate = (params) => axios.get(`${BASE}/examinees/import/template`, { params, responseType: 'blob' });
 const importExamineesPreview = (formData) =>
   axios.post(`${BASE}/examinees/import/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 const importExamineesCommit = (payload) => axios.post(`${BASE}/examinees/import/commit`, payload);
@@ -83,6 +86,7 @@ const councilMgmtService = {
   exportCouncilTurnRoomAccountsZip,
   exportCouncilTurnMonitorAccounts,
   getExaminees,
+  downloadExamineeImportTemplate,
   importExamineesPreview,
   importExamineesCommit,
   getLookup
