@@ -3,8 +3,6 @@ import ReactDOM from 'react-dom/client';
 
 // scroll bar
 import 'simplebar-react/dist/simplebar.min.css';
-import 'slick-carousel/slick/slick.css';
-import 'slick-carousel/slick/slick-theme.css';
 
 // google-fonts
 import '@fontsource/roboto/400.css';
