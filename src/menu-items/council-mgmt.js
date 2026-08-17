@@ -13,6 +13,7 @@ const councilMgmt = {
   id: 'group-council-mgmt',
   title: <FormattedMessage id="council-mgmt" defaultMessage="Tổ chức thi" />,
   type: 'group',
+  roles: ['ADMIN', 'MODERATOR'],
   children: [
     {
       id: 'organizations',

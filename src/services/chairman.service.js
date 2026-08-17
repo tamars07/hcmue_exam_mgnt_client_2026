@@ -1,0 +1,66 @@
+import axios from 'utils/axios';
+
+const BASE = 'api/council-mgmt/chairman';
+// "Xem tiến độ"/"bù giờ"/"phục hồi" đã có sẵn từ trước ở các route legacy này (module giám thị/điểm
+// trưởng cũ) — không xây route mới trùng chức năng, chỉ gọi thẳng.
+const MONITOR_BASE = 'api/monitor';
+
+// Hội đồng / ca thi / phòng thi của điểm trưởng đang đăng nhập
+const getMyCouncils = () => axios.get(`${BASE}/councils`);
+const getCouncilTurns = (councilCode) => axios.get(`${BASE}/councils/${councilCode}/turns`);
+const getCouncilTurnRooms = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/rooms`);
+const getCouncilTurnDetails = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/details`);
+
+// Kích hoạt / huỷ kích hoạt phòng thi (đơn + hàng loạt)
+const activateRoom = (id, message) => axios.put(`${BASE}/council-turn-rooms/${id}/activate`, { message });
+const deactivateRoom = (id, message) => axios.put(`${BASE}/council-turn-rooms/${id}/deactivate`, { message });
+const activateRoomsBulk = (ids, message) => axios.post(`${BASE}/council-turn-rooms/activate-bulk`, { ids, message });
+const deactivateRoomsBulk = (ids, message) => axios.post(`${BASE}/council-turn-rooms/deactivate-bulk`, { ids, message });
+
+// Nhật ký (logs)
+const getTestDataImportLogs = (councilTurnCode) =>
+  axios.get(`${BASE}/logs/test-data-import`, { params: { council_turn_code: councilTurnCode } });
+const getMonitorActivityLogs = (councilTurnCode, roomCode) =>
+  axios.get(`${BASE}/logs/monitor-activity`, { params: { council_turn_code: councilTurnCode, room_code: roomCode || undefined } });
+const getExamineeActivityLogs = (examineeAccount) =>
+  axios.get(`${BASE}/logs/examinee-activity`, { params: { examinee_account: examineeAccount } });
+
+// Khôi phục câu trả lời từ nhật ký + reset kết quả thí sinh
+const restoreAnswersFromLog = (account, payload) => axios.post(`${BASE}/examinees/${account}/restore-answers`, payload);
+const resetExamineeResult = (account, payload) => axios.post(`${BASE}/examinees/${account}/reset-result`, payload);
+
+// Xem tiến độ làm bài theo phòng (đã có từ trước)
+const getExamineesByRoom = (turnCode, roomCode) => axios.get(`${MONITOR_BASE}/examinees`, { params: { turn: turnCode, room: roomCode } });
+const getExamineeDetail = (account) => axios.get(`${MONITOR_BASE}/get-examinee-detail`, { params: { account } });
+
+// Bù giờ (đã có từ trước)
+const addTime = (payload) => axios.post(`${MONITOR_BASE}/add-time`, payload);
+const addTimeMultiple = (payload) => axios.post(`${MONITOR_BASE}/add-time-multiple`, payload);
+
+// Phục hồi trạng thái (đã có từ trước)
+const restoreExaminee = (payload) => axios.post(`${MONITOR_BASE}/restore-examinee`, payload);
+const restoreMultiple = (payload) => axios.post(`${MONITOR_BASE}/restore-multiple`, payload);
+
+const chairmanService = {
+  getMyCouncils,
+  getCouncilTurns,
+  getCouncilTurnRooms,
+  getCouncilTurnDetails,
+  activateRoom,
+  deactivateRoom,
+  activateRoomsBulk,
+  deactivateRoomsBulk,
+  getTestDataImportLogs,
+  getMonitorActivityLogs,
+  getExamineeActivityLogs,
+  restoreAnswersFromLog,
+  resetExamineeResult,
+  getExamineesByRoom,
+  getExamineeDetail,
+  addTime,
+  addTimeMultiple,
+  restoreExaminee,
+  restoreMultiple
+};
+
+export default chairmanService;

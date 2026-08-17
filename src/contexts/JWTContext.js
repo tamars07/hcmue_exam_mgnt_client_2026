@@ -163,6 +163,9 @@ export const JWTProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Ghi lại thời điểm đăng xuất ở server (ActivityLog {ROLE}_LOGOUT) — không chặn luồng đăng xuất
+    // nếu request lỗi, vì local state luôn phải được xoá dù server có phản hồi hay không.
+    axios.post('/api/auth/logout').catch(() => {});
     setSession(null);
     // localStorage.removeItem('remainingTime');
     // localStorage.removeItem('testdata');
