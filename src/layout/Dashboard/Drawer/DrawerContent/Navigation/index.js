@@ -7,8 +7,9 @@ import { Box, Divider, List, Typography, useMediaQuery } from '@mui/material';
 // project import
 import NavItem from './NavItem';
 import NavGroup from './NavGroup';
-import menuItem from 'menu-items';
+import { getMenuItems } from 'menu-items';
 
+import useAuth from 'hooks/useAuth';
 import useConfig from 'hooks/useConfig';
 import { HORIZONTAL_MAX_ITEM } from 'config';
 import { useGetMenuMaster } from 'api/menu';
@@ -20,6 +21,7 @@ const Navigation = () => {
   const theme = useTheme();
   const { menuOrientation } = useConfig();
   const { menuMaster } = useGetMenuMaster();
+  const { user } = useAuth();
   const drawerOpen = menuMaster.isDashboardDrawerOpened;
   const downLG = useMediaQuery(theme.breakpoints.down('lg'));
 
@@ -28,9 +30,8 @@ const Navigation = () => {
   const [menuItems, setMenuItems] = useState({ items: [] });
 
   useLayoutEffect(() => {
-    setMenuItems(menuItem);
-    // eslint-disable-next-line
-  }, [menuItem]);
+    setMenuItems(getMenuItems(user?.roles));
+  }, [user]);
 
   const isHorizontal = menuOrientation === MenuOrientation.HORIZONTAL && !downLG;
 

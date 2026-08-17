@@ -6,6 +6,7 @@ import DashboardLayout from 'layout/Dashboard';
 import PagesLayout from 'layout/Pages';
 import SimpleLayout from 'layout/Simple';
 import { SimpleLayoutType } from 'config';
+import ChairmanGuard from 'utils/route-guard/ChairmanGuard';
 
 const MaintenanceError = Loadable(lazy(() => import('pages/maintenance/404')));
 const MaintenanceError500 = Loadable(lazy(() => import('pages/maintenance/500')));
@@ -20,6 +21,11 @@ const RoomsPage = Loadable(lazy(() => import('pages/council-mgmt/rooms')));
 const CouncilsPage = Loadable(lazy(() => import('pages/council-mgmt/councils')));
 const CouncilTurnsPage = Loadable(lazy(() => import('pages/council-mgmt/councils/turns')));
 const ExamineesPage = Loadable(lazy(() => import('pages/council-mgmt/examinees')));
+
+// render - chairman (điểm trưởng)
+const ChairmanRoomsPage = Loadable(lazy(() => import('pages/chairman')));
+const ChairmanExamineesPage = Loadable(lazy(() => import('pages/chairman/examinees')));
+const ChairmanLogsPage = Loadable(lazy(() => import('pages/chairman/logs')));
 
 // ==============================|| MAIN ROUTING ||============================== //
 
@@ -49,6 +55,30 @@ const MainRoutes = {
         {
           path: 'council-mgmt/examinees',
           element: <ExamineesPage />
+        },
+        {
+          path: 'chairman',
+          element: (
+            <ChairmanGuard>
+              <ChairmanRoomsPage />
+            </ChairmanGuard>
+          )
+        },
+        {
+          path: 'chairman/examinees',
+          element: (
+            <ChairmanGuard>
+              <ChairmanExamineesPage />
+            </ChairmanGuard>
+          )
+        },
+        {
+          path: 'chairman/logs',
+          element: (
+            <ChairmanGuard>
+              <ChairmanLogsPage />
+            </ChairmanGuard>
+          )
         }
       ]
     },
