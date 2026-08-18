@@ -9,20 +9,24 @@ import useAuth from 'hooks/useAuth';
 // ==============================|| GUEST GUARD ||============================== //
 
 const GuestGuard = ({ children }) => {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     if (isLoggedIn) {
-      navigate(location?.state?.from ? location?.state?.from : APP_DEFAULT_PATH, {
+      // Điểm trưởng (không kiêm ADMIN) vào thẳng màn hình Giám sát kì thi thay vì dashboard chung.
+      const isChairmanOnly = user?.roles?.includes('CHAIRMAN') && !user?.roles?.includes('ADMIN');
+      const defaultPath = isChairmanOnly ? '/chairman/examinees' : APP_DEFAULT_PATH;
+
+      navigate(location?.state?.from ? location?.state?.from : defaultPath, {
         state: {
           from: ''
         },
         replace: true
       });
     }
-  }, [isLoggedIn, navigate, location]);
+  }, [isLoggedIn, user, navigate, location]);
 
   return children;
 };

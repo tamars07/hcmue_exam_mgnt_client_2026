@@ -62,6 +62,12 @@ const importExamineesCommit = (payload) => axios.post(`${BASE}/examinees/import/
 // Lookups (dropdown)
 const getLookup = (type, params) => axios.get(`${BASE}/lookups/${type}`, { params });
 
+// Monitors (tài khoản Cán bộ coi thi + Điểm trưởng)
+const getMonitors = (params) => axios.get(`${BASE}/monitors`, { params: toListParams(params) });
+const createMonitor = (data) => axios.post(`${BASE}/monitors`, data);
+const updateMonitor = (id, data) => axios.put(`${BASE}/monitors/${id}`, data);
+const deleteMonitor = (id) => axios.delete(`${BASE}/monitors/${id}`);
+
 const councilMgmtService = {
   getOrganizations,
   createOrganization,
@@ -89,7 +95,11 @@ const councilMgmtService = {
   downloadExamineeImportTemplate,
   importExamineesPreview,
   importExamineesCommit,
-  getLookup
+  getLookup,
+  getMonitors,
+  createMonitor,
+  updateMonitor,
+  deleteMonitor
 };
 
 export default councilMgmtService;

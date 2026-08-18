@@ -2,10 +2,10 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined } from '@ant-design/icons';
+import { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined, IdcardOutlined } from '@ant-design/icons';
 
 // icons
-const icons = { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined };
+const icons = { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined, IdcardOutlined };
 
 // ==============================|| MENU ITEMS - COUNCIL MANAGEMENT ||============================== //
 
@@ -42,6 +42,13 @@ const councilMgmt = {
       type: 'item',
       url: '/council-mgmt/examinees',
       icon: icons.TeamOutlined
+    },
+    {
+      id: 'monitors',
+      title: <FormattedMessage id="monitors" defaultMessage="Tài khoản cán bộ coi thi" />,
+      type: 'item',
+      url: '/council-mgmt/monitors',
+      icon: icons.IdcardOutlined
     }
   ]
 };

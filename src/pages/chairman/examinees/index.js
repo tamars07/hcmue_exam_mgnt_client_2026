@@ -1,64 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // material-ui
 import {
+  Alert,
+  Box,
   Button,
   Checkbox,
-  Chip,
-  IconButton,
+  CircularProgress,
+  FormControl,
+  FormControlLabel,
+  InputLabel,
+  ListItemText,
   MenuItem,
+  OutlinedInput,
+  Select,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
+  Switch,
   TextField,
-  Tooltip,
   Typography
 } from '@mui/material';
-import {
-  ClockCircleOutlined,
-  EyeOutlined,
-  HistoryOutlined,
-  ReloadOutlined,
-  WarningOutlined
-} from '@ant-design/icons';
+import { SyncOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
+import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import RoomMonitorSection from './RoomMonitorSection';
 import AddTimeDialog from './AddTimeDialog';
 import RestoreDialog from './RestoreDialog';
 import ExamineeDetailDialog from './ExamineeDetailDialog';
 import RestoreFromLogDialog from './RestoreFromLogDialog';
 import ResetResultDialog from './ResetResultDialog';
+import { isCouncilRunningToday, formatTurnLabel, isTurnToday } from 'utils/council-schedule';
 
-const STATUS_COLOR = {
-  'CHƯA ĐĂNG NHẬP': 'default',
-  'CHỜ THI': 'info',
-  'ĐANG THI': 'warning',
-  'ĐÃ NỘP BÀI': 'success'
-};
+const AUTO_SYNC_INTERVAL_OPTIONS = [10, 30, 60, 120, 300];
 
-// ==============================|| ĐIỂM TRƯỞNG - THÍ SINH ||============================== //
+// ==============================|| GIÁM SÁT KÌ THI ||============================== //
 
 const ChairmanExamineesPage = () => {
+  const { withLoading } = useLoadingOverlay();
+
   const [councils, setCouncils] = useState([]);
   const [councilCode, setCouncilCode] = useState('');
   const [turns, setTurns] = useState([]);
   const [turnCode, setTurnCode] = useState('');
-  const [rooms, setRooms] = useState([]);
-  const [roomCode, setRoomCode] = useState('');
+  const [availableRooms, setAvailableRooms] = useState([]);
+  const [selectedRoomCodes, setSelectedRoomCodes] = useState([]);
 
-  const [examinees, setExaminees] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [selected, setSelected] = useState([]);
+  const [roomsData, setRoomsData] = useState([]);
+  const [selectedByRoom, setSelectedByRoom] = useState({});
 
-  const [addTimeTarget, setAddTimeTarget] = useState(null); // { accounts: [] }
-  const [restoreTarget, setRestoreTarget] = useState(null); // { accounts: [] }
+  const [fetching, setFetching] = useState(false);
+  const [autoSyncing, setAutoSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState('');
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
+  const [autoSyncInterval, setAutoSyncInterval] = useState(60);
+
+  const [addTimeTarget, setAddTimeTarget] = useState(null); // { roomCode, accounts }
+  const [restoreTarget, setRestoreTarget] = useState(null); // { roomCode, accounts }
   const [detailAccount, setDetailAccount] = useState(null);
   const [restoreFromLogAccount, setRestoreFromLogAccount] = useState(null);
   const [resetTarget, setResetTarget] = useState(null); // examinee row
@@ -67,212 +67,257 @@ const ChairmanExamineesPage = () => {
     chairmanService
       .getMyCouncils()
       .then((res) => {
-        const list = res.data.data;
-        setCouncils(list);
-        if (list.length > 0) setCouncilCode(list[0].code);
+        // Chỉ liệt kê hội đồng thi đang diễn ra trong ngày hôm nay — 1 điểm trưởng có thể được gán
+        // nhiều hội đồng thi khác ngày, không cần hiện hết ở đây.
+        const todayCouncils = (res.data.data || []).filter(isCouncilRunningToday);
+        setCouncils(todayCouncils);
+        if (todayCouncils.length === 1) setCouncilCode(todayCouncils[0].code);
       })
-      .catch(() => {});
+      .catch(() => openSnackbar({ open: true, message: 'Không tải được hội đồng thi', variant: 'alert', alert: { color: 'error' } }));
   }, []);
 
   useEffect(() => {
-    if (!councilCode) return;
+    setTurnCode('');
+    setAvailableRooms([]);
+    setSelectedRoomCodes([]);
+    setRoomsData([]);
+    if (!councilCode) {
+      setTurns([]);
+      return;
+    }
     chairmanService
       .getCouncilTurns(councilCode)
       .then((res) => setTurns(res.data.data))
       .catch(() => setTurns([]));
-    setTurnCode('');
-    setRoomCode('');
   }, [councilCode]);
 
   useEffect(() => {
+    setSelectedRoomCodes([]);
+    setRoomsData([]);
     if (!turnCode) {
-      setRooms([]);
+      setAvailableRooms([]);
       return;
     }
     chairmanService
       .getCouncilTurnRooms(turnCode)
-      .then((res) => setRooms(res.data.data))
-      .catch(() => setRooms([]));
-    setRoomCode('');
+      .then((res) =>
+        setAvailableRooms([...res.data.data].sort((a, b) => (a.room_name || '').localeCompare(b.room_name || '', 'vi', { numeric: true })))
+      )
+      .catch(() => setAvailableRooms([]));
   }, [turnCode]);
 
-  const fetchExaminees = () => {
-    if (!turnCode || !roomCode) {
-      setExaminees([]);
+  const fetchMonitorData = async (roomCodes, { silent = false } = {}) => {
+    if (!turnCode || roomCodes.length === 0) return;
+    const doFetch = async () => {
+      const res = await chairmanService.getRoomsMonitor(turnCode, roomCodes);
+      setRoomsData(res.data.data);
+      setLastSyncTime(
+        new Date().toLocaleString('vi-VN', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      );
+    };
+
+    if (silent) {
+      setAutoSyncing(true);
+      try {
+        await doFetch();
+      } catch (e) {
+        // im lặng bỏ qua lỗi đồng bộ tự động, tránh làm phiền người dùng liên tục
+      } finally {
+        setAutoSyncing(false);
+      }
       return;
     }
-    setLoading(true);
-    chairmanService
-      .getExamineesByRoom(turnCode, roomCode)
-      .then((res) => setExaminees(res.data.data.examinees))
-      .catch((e) => openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách thí sinh', variant: 'alert', alert: { color: 'error' } }))
-      .finally(() => setLoading(false));
+
+    setFetching(true);
+    try {
+      await withLoading(doFetch, 'Đang tải dữ liệu giám sát...');
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Không tải được dữ liệu giám sát', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setFetching(false);
+    }
   };
+
+  const handleFetchClick = () => {
+    setSelectedByRoom({});
+    fetchMonitorData(selectedRoomCodes);
+  };
+
+  const handleSyncClick = () => fetchMonitorData(selectedRoomCodes);
+
+  const stateRef = useRef({});
+  stateRef.current = { fetching, autoSyncing, roomsData, selectedRoomCodes, turnCode };
 
   useEffect(() => {
-    setSelected([]);
-    fetchExaminees();
+    if (!autoSyncEnabled || !autoSyncInterval || autoSyncInterval < 5) return undefined;
+
+    const timer = setInterval(() => {
+      const { fetching: isFetching, autoSyncing: isAutoSyncing, roomsData: currentRoomsData, selectedRoomCodes: currentRoomCodes } =
+        stateRef.current;
+      if (!isFetching && !isAutoSyncing && currentRoomsData.length > 0 && currentRoomCodes.length > 0) {
+        fetchMonitorData(currentRoomCodes, { silent: true });
+      }
+    }, autoSyncInterval * 1000);
+
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [turnCode, roomCode]);
+  }, [autoSyncEnabled, autoSyncInterval]);
 
-  const toggleSelect = (username, checked) => {
-    setSelected((prev) => (checked ? [...prev, username] : prev.filter((u) => u !== username)));
+  const refreshAfterAction = () => {
+    setSelectedByRoom({});
+    fetchMonitorData(selectedRoomCodes, { silent: true });
   };
 
-  const allSelected = examinees.length > 0 && selected.length === examinees.length;
-  const someSelected = selected.length > 0 && !allSelected;
-
-  const handleAfterAction = () => {
-    setSelected([]);
-    fetchExaminees();
+  const toggleSelectInRoom = (roomCode) => (username, checked) => {
+    setSelectedByRoom((prev) => {
+      const current = prev[roomCode] || [];
+      return { ...prev, [roomCode]: checked ? [...current, username] : current.filter((u) => u !== username) };
+    });
   };
+
+  const selectAllInRoom = (roomCode) => (usernames) => {
+    setSelectedByRoom((prev) => ({ ...prev, [roomCode]: usernames }));
+  };
+
+  const selectedTurn = turns.find((t) => t.code === turnCode);
+  const turnIsToday = isTurnToday(selectedTurn);
 
   return (
-    <MainCard title="Thí sinh">
+    <MainCard title="Giám sát kì thi">
       <Stack spacing={2}>
-        <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
-          {councils.length > 1 && (
-            <TextField select size="small" label="Hội đồng thi" value={councilCode} onChange={(e) => setCouncilCode(e.target.value)} sx={{ minWidth: 240 }}>
-              {councils.map((c) => (
-                <MenuItem key={c.code} value={c.code}>
-                  {c.desc || c.code}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-          <TextField select size="small" label="Ca thi" value={turnCode} onChange={(e) => setTurnCode(e.target.value)} sx={{ minWidth: 200 }}>
-            {turns.map((t) => (
-              <MenuItem key={t.code} value={t.code}>
-                {t.name}
-              </MenuItem>
-            ))}
-          </TextField>
+        <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2} alignItems="flex-start">
           <TextField
             select
             size="small"
-            label="Phòng thi"
-            value={roomCode}
-            disabled={!turnCode}
-            onChange={(e) => setRoomCode(e.target.value)}
-            sx={{ minWidth: 200 }}
+            label="Hội đồng thi"
+            value={councilCode}
+            onChange={(e) => setCouncilCode(e.target.value)}
+            sx={{ minWidth: 240 }}
+            helperText={councils.length === 0 ? 'Không có hội đồng thi nào diễn ra hôm nay' : ''}
           >
-            {rooms.map((r) => (
-              <MenuItem key={r.room_code} value={r.room_code}>
-                {r.room_code}
+            {councils.map((c) => (
+              <MenuItem key={c.code} value={c.code}>
+                {c.desc || c.code}
               </MenuItem>
             ))}
           </TextField>
+          <TextField select size="small" label="Ca thi" value={turnCode} disabled={!councilCode} onChange={(e) => setTurnCode(e.target.value)} sx={{ minWidth: 200 }}>
+            {turns.map((t) => (
+              <MenuItem key={t.code} value={t.code}>
+                {formatTurnLabel(t)}
+              </MenuItem>
+            ))}
+          </TextField>
+          <FormControl size="small" disabled={!turnCode} sx={{ minWidth: 260 }}>
+            <InputLabel id="rooms-label">Phòng thi</InputLabel>
+            <Select
+              labelId="rooms-label"
+              multiple
+              value={selectedRoomCodes}
+              onChange={(e) => setSelectedRoomCodes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              input={<OutlinedInput label="Phòng thi" />}
+              renderValue={(selected) =>
+                selected.length > 0
+                  ? availableRooms
+                      .filter((r) => selected.includes(r.room_code))
+                      .map((r) => r.room_name)
+                      .join(', ')
+                  : 'Chọn phòng thi'
+              }
+            >
+              {availableRooms.map((r) => (
+                <MenuItem key={r.room_code} value={r.room_code}>
+                  <Checkbox checked={selectedRoomCodes.includes(r.room_code)} size="small" />
+                  <ListItemText primary={r.room_name} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button variant="contained" disabled={!turnCode || selectedRoomCodes.length === 0 || fetching} onClick={handleFetchClick}>
+            Lấy dữ liệu
+          </Button>
+          <Button variant="outlined" disabled={selectedRoomCodes.length === 0} onClick={() => setSelectedRoomCodes([])}>
+            Chọn lại
+          </Button>
         </Stack>
 
-        {!roomCode ? (
+        {roomsData.length === 0 ? (
           <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-            Chọn ca thi và phòng thi để xem danh sách thí sinh.
+            Chọn hội đồng thi, ca thi và ít nhất 1 phòng thi rồi bấm &quot;Lấy dữ liệu&quot; để bắt đầu giám sát.
           </Typography>
         ) : (
           <>
-            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" rowGap={1}>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<ClockCircleOutlined />}
-                disabled={selected.length === 0}
-                onClick={() => setAddTimeTarget({ accounts: selected })}
-              >
-                Bù giờ ({selected.length})
+            {!turnIsToday && (
+              <Alert severity="info">
+                Ca thi này không diễn ra hôm nay — chỉ có thể xem thông tin, không thể bù giờ/phục hồi/reset kết quả.
+              </Alert>
+            )}
+            <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={1}>
+              <Button variant="contained" color="success" startIcon={<SyncOutlined />} disabled={fetching} onClick={handleSyncClick}>
+                Đồng bộ
               </Button>
-              <Button
+              <FormControlLabel
+                control={<Switch checked={autoSyncEnabled} onChange={(e) => setAutoSyncEnabled(e.target.checked)} />}
+                label="Tự động đồng bộ"
+              />
+              <TextField
+                select
                 size="small"
-                variant="outlined"
-                startIcon={<ReloadOutlined />}
-                disabled={selected.length === 0}
-                onClick={() => setRestoreTarget({ accounts: selected })}
+                label="Chu kỳ"
+                value={autoSyncInterval}
+                disabled={!autoSyncEnabled}
+                onChange={(e) => setAutoSyncInterval(e.target.value)}
+                sx={{ width: 140 }}
               >
-                Phục hồi ({selected.length})
-              </Button>
+                {AUTO_SYNC_INTERVAL_OPTIONS.map((s) => (
+                  <MenuItem key={s} value={s}>
+                    {s} giây
+                  </MenuItem>
+                ))}
+              </TextField>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minHeight: 28 }}>
+                {autoSyncing && (
+                  <>
+                    <CircularProgress size={16} />
+                    <Typography variant="body2" color="text.secondary">
+                      Đang tự động đồng bộ...
+                    </Typography>
+                  </>
+                )}
+                {!autoSyncing && lastSyncTime && (
+                  <Typography variant="body2" sx={{ color: '#1B5E20', fontWeight: 500 }}>
+                    Đồng bộ lần cuối: {lastSyncTime}
+                  </Typography>
+                )}
+              </Box>
             </Stack>
 
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell padding="checkbox">
-                      <Checkbox
-                        checked={allSelected}
-                        indeterminate={someSelected}
-                        onChange={(e) => setSelected(e.target.checked ? examinees.map((ex) => ex.username) : [])}
-                      />
-                    </TableCell>
-                    <TableCell>Vị trí</TableCell>
-                    <TableCell>CCCD/MSSV</TableCell>
-                    <TableCell>Họ tên</TableCell>
-                    <TableCell>Môn thi</TableCell>
-                    <TableCell>Tiến độ</TableCell>
-                    <TableCell>Cập nhật lúc</TableCell>
-                    <TableCell>Trạng thái</TableCell>
-                    <TableCell align="right">Thao tác</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {examinees.map((ex) => (
-                    <TableRow key={ex.username}>
-                      <TableCell padding="checkbox">
-                        <Checkbox checked={selected.includes(ex.username)} onChange={(e) => toggleSelect(ex.username, e.target.checked)} />
-                      </TableCell>
-                      <TableCell>{ex.seat_number}</TableCell>
-                      <TableCell>{ex.id_card_number}</TableCell>
-                      <TableCell>
-                        {ex.fullname}
-                        {ex.is_backup ? <Chip label="Dự phòng" size="small" color="warning" sx={{ ml: 1 }} /> : null}
-                      </TableCell>
-                      <TableCell>{ex.subject}</TableCell>
-                      <TableCell>
-                        {ex.answered_count}/{ex.total_questions}
-                      </TableCell>
-                      <TableCell>{ex.last_update_time || '—'}</TableCell>
-                      <TableCell>
-                        <Chip label={ex.status} size="small" color={STATUS_COLOR[ex.status] || 'default'} />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title="Xem chi tiết bài làm">
-                          <IconButton size="small" onClick={() => setDetailAccount(ex.username)}>
-                            <EyeOutlined />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Bù giờ">
-                          <IconButton size="small" onClick={() => setAddTimeTarget({ accounts: [ex.username] })}>
-                            <ClockCircleOutlined />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Phục hồi trạng thái">
-                          <IconButton size="small" onClick={() => setRestoreTarget({ accounts: [ex.username] })}>
-                            <ReloadOutlined />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Phục hồi từ nhật ký">
-                          <IconButton size="small" onClick={() => setRestoreFromLogAccount(ex.username)}>
-                            <HistoryOutlined />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Reset kết quả">
-                          <IconButton size="small" color="error" onClick={() => setResetTarget(ex)}>
-                            <WarningOutlined />
-                          </IconButton>
-                        </Tooltip>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {!loading && examinees.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={9}>
-                        <Typography color="text.secondary" align="center">
-                          Phòng thi này chưa có thí sinh.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Stack spacing={3}>
+              {roomsData.map((room) => (
+                <RoomMonitorSection
+                  key={room.room_code}
+                  room={room}
+                  readOnly={!turnIsToday}
+                  selected={selectedByRoom[room.room_code] || []}
+                  onToggleSelect={toggleSelectInRoom(room.room_code)}
+                  onSelectAll={selectAllInRoom(room.room_code)}
+                  onBulkAddTime={() => setAddTimeTarget({ roomCode: room.room_code, accounts: selectedByRoom[room.room_code] || [] })}
+                  onBulkRestore={() => setRestoreTarget({ roomCode: room.room_code, accounts: selectedByRoom[room.room_code] || [] })}
+                  onDetail={(username) => setDetailAccount(username)}
+                  onRestore={(examinee) => setRestoreTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
+                  onAddTime={(examinee) => setAddTimeTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
+                  onRestoreFromLog={(username) => setRestoreFromLogAccount(username)}
+                  onReset={(examinee) => setResetTarget(examinee)}
+                />
+              ))}
+            </Stack>
           </>
         )}
       </Stack>
@@ -282,9 +327,9 @@ const ChairmanExamineesPage = () => {
           open
           onClose={() => setAddTimeTarget(null)}
           turnCode={turnCode}
-          roomCode={roomCode}
+          roomCode={addTimeTarget.roomCode}
           accounts={addTimeTarget.accounts}
-          onDone={handleAfterAction}
+          onDone={refreshAfterAction}
         />
       )}
       {restoreTarget && (
@@ -292,9 +337,9 @@ const ChairmanExamineesPage = () => {
           open
           onClose={() => setRestoreTarget(null)}
           turnCode={turnCode}
-          roomCode={roomCode}
+          roomCode={restoreTarget.roomCode}
           accounts={restoreTarget.accounts}
-          onDone={handleAfterAction}
+          onDone={refreshAfterAction}
         />
       )}
       <ExamineeDetailDialog open={!!detailAccount} onClose={() => setDetailAccount(null)} account={detailAccount} />
@@ -302,9 +347,9 @@ const ChairmanExamineesPage = () => {
         open={!!restoreFromLogAccount}
         onClose={() => setRestoreFromLogAccount(null)}
         account={restoreFromLogAccount}
-        onDone={handleAfterAction}
+        onDone={refreshAfterAction}
       />
-      <ResetResultDialog open={!!resetTarget} onClose={() => setResetTarget(null)} examinee={resetTarget} onDone={handleAfterAction} />
+      <ResetResultDialog open={!!resetTarget} onClose={() => setResetTarget(null)} examinee={resetTarget} onDone={refreshAfterAction} />
     </MainCard>
   );
 };
