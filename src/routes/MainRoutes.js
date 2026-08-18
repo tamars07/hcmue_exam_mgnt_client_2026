@@ -21,8 +21,10 @@ const RoomsPage = Loadable(lazy(() => import('pages/council-mgmt/rooms')));
 const CouncilsPage = Loadable(lazy(() => import('pages/council-mgmt/councils')));
 const CouncilTurnsPage = Loadable(lazy(() => import('pages/council-mgmt/councils/turns')));
 const ExamineesPage = Loadable(lazy(() => import('pages/council-mgmt/examinees')));
+const MonitorsPage = Loadable(lazy(() => import('pages/council-mgmt/monitors')));
 
 // render - chairman (điểm trưởng)
+const ChairmanDashboardPage = Loadable(lazy(() => import('pages/chairman/dashboard')));
 const ChairmanRoomsPage = Loadable(lazy(() => import('pages/chairman')));
 const ChairmanExamineesPage = Loadable(lazy(() => import('pages/chairman/examinees')));
 const ChairmanLogsPage = Loadable(lazy(() => import('pages/chairman/logs')));
@@ -57,7 +59,19 @@ const MainRoutes = {
           element: <ExamineesPage />
         },
         {
-          path: 'chairman',
+          path: 'council-mgmt/monitors',
+          element: <MonitorsPage />
+        },
+        {
+          path: 'chairman/dashboard',
+          element: (
+            <ChairmanGuard>
+              <ChairmanDashboardPage />
+            </ChairmanGuard>
+          )
+        },
+        {
+          path: 'chairman/rooms',
           element: (
             <ChairmanGuard>
               <ChairmanRoomsPage />

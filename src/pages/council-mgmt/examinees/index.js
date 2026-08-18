@@ -11,6 +11,7 @@ import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import ImportExamineeDialog from './ImportExamineeDialog';
+import { formatTurnLabel } from 'utils/council-schedule';
 
 // ==============================|| EXAMINEES - LIST ||============================== //
 
@@ -184,7 +185,7 @@ const ExamineesPage = () => {
               <MenuItem value="">Tất cả ca thi</MenuItem>
               {turns.map((t) => (
                 <MenuItem key={t.code} value={t.code}>
-                  {t.name}
+                  {formatTurnLabel(t)}
                 </MenuItem>
               ))}
             </TextField>

@@ -27,8 +27,25 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import { isCouncilRunningToday, formatTurnLabel, isTurnToday } from 'utils/council-schedule';
 
 // ==============================|| ĐIỂM TRƯỞNG - KÍCH HOẠT PHÒNG THI ||============================== //
+
+// Đảm bảo hiệu ứng chờ hiện tối thiểu 3 giây sau khi bấm Kích hoạt/Huỷ kích hoạt, kể cả khi API
+// phản hồi nhanh hơn — tránh cảm giác thao tác "chưa chắc đã chạy" với 1 hành động quan trọng.
+const MIN_ACTIVATION_LOADING_MS = 3000;
+
+const withMinDuration = async (task, minMs) => {
+  const start = Date.now();
+  try {
+    return await task();
+  } finally {
+    const elapsed = Date.now() - start;
+    if (elapsed < minMs) {
+      await new Promise((resolve) => setTimeout(resolve, minMs - elapsed));
+    }
+  }
+};
 
 const ChairmanRoomsPage = () => {
   const { withLoading } = useLoadingOverlay();
@@ -50,14 +67,21 @@ const ChairmanRoomsPage = () => {
     chairmanService
       .getMyCouncils()
       .then((res) => {
-        const list = res.data.data;
+        // Điểm trưởng: chỉ hội đồng thi được phân công và đang diễn ra hôm nay (getMyCouncils() đã
+        // lọc theo phân công ở backend, chỉ cần lọc thêm theo ngày ở đây). Admin: getMyCouncils()
+        // trả về mọi hội đồng thi, chỉ cần lọc theo ngày hôm nay.
+        const list = (res.data.data || []).filter(isCouncilRunningToday);
         setCouncils(list);
-        if (list.length > 0) setCouncilCode(list[0].code);
+        if (list.length === 1) setCouncilCode(list[0].code);
       })
       .catch(() => openSnackbar({ open: true, message: 'Không tải được hội đồng thi', variant: 'alert', alert: { color: 'error' } }));
   }, []);
 
   useEffect(() => {
+    setTurns([]);
+    setRoomsByTurn({});
+    setExpandedTurnCode(false);
+    setSelectedRoomIds([]);
     if (!councilCode) return;
     chairmanService
       .getCouncilTurns(councilCode)
@@ -69,7 +93,10 @@ const ChairmanRoomsPage = () => {
     setLoadingTurn(true);
     try {
       const res = await chairmanService.getCouncilTurnDetails(turnCode);
-      setRoomsByTurn((prev) => ({ ...prev, [turnCode]: res.data.data }));
+      const sorted = [...res.data.data].sort((a, b) =>
+        (a.room?.name || '').localeCompare(b.room?.name || '', 'vi', { numeric: true })
+      );
+      setRoomsByTurn((prev) => ({ ...prev, [turnCode]: sorted }));
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách phòng thi', variant: 'alert', alert: { color: 'error' } });
     } finally {
@@ -100,17 +127,21 @@ const ChairmanRoomsPage = () => {
     const isActivate = action === 'activate';
 
     try {
-      await withLoading(async () => {
-        if (scope.type === 'single') {
-          await (isActivate
-            ? chairmanService.activateRoom(scope.room.council_turn_room_id, confirmMessage)
-            : chairmanService.deactivateRoom(scope.room.council_turn_room_id, confirmMessage));
-        } else {
-          await (isActivate
-            ? chairmanService.activateRoomsBulk(selectedRoomIds, confirmMessage)
-            : chairmanService.deactivateRoomsBulk(selectedRoomIds, confirmMessage));
-        }
-      }, isActivate ? 'Đang kích hoạt phòng thi... Vui lòng chờ' : 'Đang huỷ kích hoạt phòng thi... Vui lòng chờ');
+      await withLoading(
+        () =>
+          withMinDuration(async () => {
+            if (scope.type === 'single') {
+              await (isActivate
+                ? chairmanService.activateRoom(scope.room.council_turn_room_id, confirmMessage)
+                : chairmanService.deactivateRoom(scope.room.council_turn_room_id, confirmMessage));
+            } else {
+              await (isActivate
+                ? chairmanService.activateRoomsBulk(selectedRoomIds, confirmMessage)
+                : chairmanService.deactivateRoomsBulk(selectedRoomIds, confirmMessage));
+            }
+          }, MIN_ACTIVATION_LOADING_MS),
+        isActivate ? 'Đang kích hoạt phòng thi... Vui lòng chờ' : 'Đang huỷ kích hoạt phòng thi... Vui lòng chờ'
+      );
 
       openSnackbar({
         open: true,
@@ -129,19 +160,31 @@ const ChairmanRoomsPage = () => {
   return (
     <MainCard title="Kích hoạt phòng thi">
       <Stack spacing={2}>
-        {councils.length > 1 && (
-          <TextField select size="small" label="Hội đồng thi" value={councilCode} onChange={(e) => setCouncilCode(e.target.value)} sx={{ maxWidth: 360 }}>
-            {councils.map((c) => (
-              <MenuItem key={c.code} value={c.code}>
-                {c.desc || c.code}
-              </MenuItem>
-            ))}
-          </TextField>
+        <TextField
+          select
+          size="small"
+          label="Hội đồng thi"
+          value={councilCode}
+          onChange={(e) => setCouncilCode(e.target.value)}
+          sx={{ maxWidth: 360 }}
+          helperText={councils.length === 0 ? 'Không có hội đồng thi nào diễn ra hôm nay' : ''}
+        >
+          {councils.map((c) => (
+            <MenuItem key={c.code} value={c.code}>
+              {c.desc || c.code}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        {!councilCode && (
+          <Typography align="center" color="text.secondary" sx={{ py: 4 }}>
+            Chọn hội đồng thi để xem danh sách ca thi và phòng thi.
+          </Typography>
         )}
 
-        {turns.length === 0 && (
+        {councilCode && turns.length === 0 && (
           <Typography align="center" color="text.secondary" sx={{ py: 4 }}>
-            {councilCode ? 'Hội đồng thi này chưa có ca thi nào.' : 'Đang tải hội đồng thi...'}
+            Hội đồng thi này chưa có ca thi nào.
           </Typography>
         )}
 
@@ -149,15 +192,17 @@ const ChairmanRoomsPage = () => {
           const rooms = roomsByTurn[turn.code] || [];
           const allSelected = rooms.length > 0 && selectedRoomIds.length === rooms.length;
           const someSelected = selectedRoomIds.length > 0 && !allSelected;
+          const turnIsToday = isTurnToday(turn);
 
           return (
             <Accordion key={turn.code} expanded={expandedTurnCode === turn.code} onChange={handleAccordionChange(turn.code)}>
               <AccordionSummary expandIcon={<DownOutlined />}>
                 <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%', flexWrap: 'wrap', rowGap: 0.5 }}>
                   <Typography sx={{ fontWeight: 500, minWidth: 160 }}>
-                    {turn.code} - {turn.name}
+                    {turn.code} - {formatTurnLabel(turn)}
                   </Typography>
                   <Chip label={`${turn.no_rooms} phòng`} size="small" />
+                  {!turnIsToday && <Chip label="Chỉ xem — không phải ca thi hôm nay" size="small" color="default" />}
                 </Stack>
               </AccordionSummary>
               <AccordionDetails>
@@ -173,6 +218,7 @@ const ChairmanRoomsPage = () => {
                           <Checkbox
                             checked={allSelected}
                             indeterminate={someSelected}
+                            disabled={!turnIsToday}
                             onChange={(e) =>
                               setSelectedRoomIds(e.target.checked ? rooms.map((r) => r.council_turn_room_id) : [])
                             }
@@ -185,7 +231,7 @@ const ChairmanRoomsPage = () => {
                         variant="contained"
                         color="success"
                         startIcon={<ThunderboltOutlined />}
-                        disabled={selectedRoomIds.length === 0}
+                        disabled={!turnIsToday || selectedRoomIds.length === 0}
                         onClick={() => openConfirm('activate', { type: 'bulk' })}
                       >
                         Kích hoạt đã chọn ({selectedRoomIds.length})
@@ -195,7 +241,7 @@ const ChairmanRoomsPage = () => {
                         variant="outlined"
                         color="warning"
                         startIcon={<PoweroffOutlined />}
-                        disabled={selectedRoomIds.length === 0}
+                        disabled={!turnIsToday || selectedRoomIds.length === 0}
                         onClick={() => openConfirm('deactivate', { type: 'bulk' })}
                       >
                         Huỷ kích hoạt đã chọn ({selectedRoomIds.length})
@@ -208,6 +254,7 @@ const ChairmanRoomsPage = () => {
                           <Checkbox
                             size="small"
                             checked={selectedRoomIds.includes(room.council_turn_room_id)}
+                            disabled={!turnIsToday}
                             onChange={(e) => toggleRoomSelection(room.council_turn_room_id, e.target.checked)}
                             sx={{ p: 0 }}
                           />
@@ -230,6 +277,7 @@ const ChairmanRoomsPage = () => {
                                 size="small"
                                 variant="outlined"
                                 color="success"
+                                disabled={!turnIsToday}
                                 onClick={() => openConfirm('activate', { type: 'single', room })}
                               >
                                 Kích hoạt
@@ -240,6 +288,7 @@ const ChairmanRoomsPage = () => {
                                 size="small"
                                 variant="outlined"
                                 color="warning"
+                                disabled={!turnIsToday}
                                 onClick={() => openConfirm('deactivate', { type: 'single', room })}
                               >
                                 Huỷ kích hoạt

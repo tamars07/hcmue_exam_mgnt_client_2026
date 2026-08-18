@@ -50,6 +50,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import { formatTurnLabel } from 'utils/council-schedule';
 
 // ==============================|| COUNCIL TURNS - LIST ||============================== //
 
@@ -326,10 +327,7 @@ const CouncilTurnsPage = () => {
             <AccordionSummary expandIcon={<DownOutlined />}>
               <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%', pr: 1, flexWrap: 'wrap', rowGap: 0.5 }}>
                 <Typography sx={{ fontWeight: 500, minWidth: 160 }}>
-                  {turn.code} - {turn.name}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {turn.start_at}
+                  {turn.code} - {formatTurnLabel(turn)}
                 </Typography>
                 <Chip label={`${turn.no_rooms} phòng`} size="small" />
                 <Chip label={turn.status ? 'Sử dụng' : 'Ẩn'} color={turn.status ? 'success' : 'default'} size="small" />

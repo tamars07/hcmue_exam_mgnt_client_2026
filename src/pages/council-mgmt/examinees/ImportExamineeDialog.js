@@ -30,6 +30,7 @@ import { DownloadOutlined, UploadOutlined } from '@ant-design/icons';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import { formatTurnLabel } from 'utils/council-schedule';
 
 // ==============================|| IMPORT THÍ SINH TỪ EXCEL ||============================== //
 
@@ -213,7 +214,7 @@ const ImportExamineeDialog = ({ open, onClose, defaultCouncilCode, defaultTurnCo
                 >
                   {turns.map((t) => (
                     <MenuItem key={t.code} value={t.code}>
-                      {t.name}
+                      {formatTurnLabel(t)}
                     </MenuItem>
                   ))}
                 </TextField>

@@ -10,6 +10,9 @@ const getMyCouncils = () => axios.get(`${BASE}/councils`);
 const getCouncilTurns = (councilCode) => axios.get(`${BASE}/councils/${councilCode}/turns`);
 const getCouncilTurnRooms = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/rooms`);
 const getCouncilTurnDetails = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/details`);
+// Giám sát kì thi: tiến độ + trạng thái thí sinh của 1 hoặc nhiều phòng thi được chọn trong 1 ca thi
+const getRoomsMonitor = (councilTurnCode, roomCodes) =>
+  axios.get(`${BASE}/council-turns/${councilTurnCode}/monitor`, { params: { room_codes: roomCodes.join(',') } });
 
 // Kích hoạt / huỷ kích hoạt phòng thi (đơn + hàng loạt)
 const activateRoom = (id, message) => axios.put(`${BASE}/council-turn-rooms/${id}/activate`, { message });
@@ -24,6 +27,14 @@ const getMonitorActivityLogs = (councilTurnCode, roomCode) =>
   axios.get(`${BASE}/logs/monitor-activity`, { params: { council_turn_code: councilTurnCode, room_code: roomCode || undefined } });
 const getExamineeActivityLogs = (examineeAccount) =>
   axios.get(`${BASE}/logs/examinee-activity`, { params: { examinee_account: examineeAccount } });
+// Tìm thí sinh theo tài khoản/CCCD-MSSV/họ lót/tên khi không nhớ ca thi/phòng thi
+const searchExaminees = (councilCode, search) => axios.get(`${BASE}/logs/examinees/search`, { params: { council_code: councilCode, search } });
+
+// Tổng quan / thống kê thí sinh theo hội đồng thi (lọc thêm được theo ca thi/phòng thi)
+const getDashboardStats = (councilCode, turnCode, roomCode) =>
+  axios.get(`${BASE}/dashboard/stats`, {
+    params: { council_code: councilCode, council_turn_code: turnCode || undefined, room_code: roomCode || undefined }
+  });
 
 // Khôi phục câu trả lời từ nhật ký + reset kết quả thí sinh
 const restoreAnswersFromLog = (account, payload) => axios.post(`${BASE}/examinees/${account}/restore-answers`, payload);
@@ -46,6 +57,7 @@ const chairmanService = {
   getCouncilTurns,
   getCouncilTurnRooms,
   getCouncilTurnDetails,
+  getRoomsMonitor,
   activateRoom,
   deactivateRoom,
   activateRoomsBulk,
@@ -53,6 +65,8 @@ const chairmanService = {
   getTestDataImportLogs,
   getMonitorActivityLogs,
   getExamineeActivityLogs,
+  searchExaminees,
+  getDashboardStats,
   restoreAnswersFromLog,
   resetExamineeResult,
   getExamineesByRoom,
