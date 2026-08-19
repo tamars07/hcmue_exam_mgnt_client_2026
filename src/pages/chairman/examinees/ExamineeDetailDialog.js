@@ -25,7 +25,7 @@ import chairmanService from 'services/chairman.service';
 
 // ==============================|| CHI TIẾT BÀI LÀM CỦA 1 THÍ SINH ||============================== //
 
-const ExamineeDetailDialog = ({ open, onClose, account }) => {
+const ExamineeDetailDialog = ({ open, onClose, account, fullname }) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
 
@@ -42,7 +42,21 @@ const ExamineeDetailDialog = ({ open, onClose, account }) => {
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Chi tiết bài làm — {account}</DialogTitle>
+      <DialogTitle>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+          <span>
+            Chi tiết làm bài -{' '}
+            <Typography component="span" sx={{ color: 'primary.main', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1.2 }}>
+              {fullname ? `${fullname} | ${account}` : account}
+            </Typography>
+          </span>
+          {data && (
+            <Typography component="span" sx={{ color: 'error.main', fontWeight: 800, fontSize: '1.5rem', lineHeight: 1.2 }}>
+              Tiến độ: {data.count}/{data.total}
+            </Typography>
+          )}
+        </Stack>
+      </DialogTitle>
       <DialogContent dividers>
         {loading ? (
           <Typography color="text.secondary">Đang tải...</Typography>
@@ -51,9 +65,11 @@ const ExamineeDetailDialog = ({ open, onClose, account }) => {
         ) : (
           <Stack spacing={2}>
             <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
-              <Chip label={`Tiến độ: ${data.count}/${data.total}`} color={data.count === data.total ? 'success' : 'warning'} />
               {data.start_at && <Chip label={`Bắt đầu: ${data.start_at}`} size="small" />}
               {data.finish_at && <Chip label={`Nộp bài: ${data.finish_at}`} size="small" color="success" />}
+              {!data.finish_at && data.expected_finish_at && (
+                <Chip label={`Giờ kết thúc dự kiến: ${data.expected_finish_at}`} size="small" color="warning" />
+              )}
               {data.bonus_time > 0 && <Chip label={`Bù giờ: ${data.bonus_time} phút`} size="small" color="info" />}
             </Stack>
             <TableContainer sx={{ maxHeight: 420 }}>
@@ -61,7 +77,6 @@ const ExamineeDetailDialog = ({ open, onClose, account }) => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Câu</TableCell>
-                    <TableCell>Trả lời</TableCell>
                     <TableCell>Thời điểm trả lời</TableCell>
                   </TableRow>
                 </TableHead>
@@ -69,15 +84,6 @@ const ExamineeDetailDialog = ({ open, onClose, account }) => {
                   {data.details.map((d, idx) => (
                     <TableRow key={idx}>
                       <TableCell>{d.number}</TableCell>
-                      <TableCell>
-                        {d.type === 5 ? (
-                          <Typography variant="body2">
-                            {d.answer_summary || 'Chưa làm'} {d.word_count > 0 && `(${d.word_count} từ)`}
-                          </Typography>
-                        ) : (
-                          d.answer
-                        )}
-                      </TableCell>
                       <TableCell>{d.submitting_time || '—'}</TableCell>
                     </TableRow>
                   ))}
@@ -97,7 +103,8 @@ const ExamineeDetailDialog = ({ open, onClose, account }) => {
 ExamineeDetailDialog.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  account: PropTypes.string
+  account: PropTypes.string,
+  fullname: PropTypes.string
 };
 
 export default ExamineeDetailDialog;

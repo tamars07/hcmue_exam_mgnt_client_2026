@@ -1,8 +1,7 @@
 import PropTypes from 'prop-types';
 
 // material-ui
-import { Box, Button, Checkbox, Chip, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
-import { HistoryOutlined, WarningOutlined } from '@ant-design/icons';
+import { Box, Button, Checkbox, Chip, Paper, Stack, Typography } from '@mui/material';
 
 // ==============================|| GIÁM SÁT KÌ THI - THẺ THÍ SINH ||============================== //
 // Layout phỏng theo component Card trong hcmue_client_2026/src/pages/exam/giamthi.js.
@@ -48,7 +47,9 @@ const getProgressColor = (answeredCount, totalQuestions) => {
   return '#D32F2F';
 };
 
-const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, onRestore, onAddTime, onRestoreFromLog, onReset }) => {
+// onRestoreFromLog/onReset (Phục hồi từ nhật ký, Reset kết quả) tạm ẩn khỏi giao diện — không nhận
+// nữa ở đây nhưng cha vẫn có thể truyền xuống bình thường, không lỗi gì, chỉ cần thêm lại khi bật.
+const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, onRestore, onAddTime }) => {
   const {
     seat_number: seatNumber,
     status,
@@ -165,7 +166,7 @@ const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, 
         <Box sx={{ display: 'flex', justifyContent: 'right', mt: 0.5 }}>
           <Stack direction="row" spacing={0.5}>
             {status !== 'CHỜ THI' && (
-              <Button variant="contained" size="small" sx={{ backgroundColor: '#0aa1a1' }} onClick={() => onDetail(username)}>
+              <Button variant="contained" size="small" sx={{ backgroundColor: '#0aa1a1' }} onClick={() => onDetail(examinee)}>
                 Xem
               </Button>
             )}
@@ -187,22 +188,8 @@ const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, 
             >
               Bù giờ
             </Button>
-            {status !== 'CHỜ THI' && (
-              <Tooltip title="Phục hồi từ nhật ký">
-                <span>
-                  <IconButton size="small" disabled={readOnly} onClick={() => onRestoreFromLog(username)}>
-                    <HistoryOutlined />
-                  </IconButton>
-                </span>
-              </Tooltip>
-            )}
-            <Tooltip title="Reset kết quả">
-              <span>
-                <IconButton size="small" color="error" disabled={readOnly} onClick={() => onReset(examinee)}>
-                  <WarningOutlined />
-                </IconButton>
-              </span>
-            </Tooltip>
+            {/* TẠM ẨN: "Phục hồi từ nhật ký" và "Reset kết quả" đang chạy chưa đúng — ẩn khỏi giao
+                diện cho tới khi sửa xong, giữ nguyên props/dialog/handler bên dưới để bật lại nhanh. */}
           </Stack>
         </Box>
       </Stack>
@@ -217,9 +204,7 @@ ExamineeCard.propTypes = {
   onToggleSelect: PropTypes.func.isRequired,
   onDetail: PropTypes.func.isRequired,
   onRestore: PropTypes.func.isRequired,
-  onAddTime: PropTypes.func.isRequired,
-  onRestoreFromLog: PropTypes.func.isRequired,
-  onReset: PropTypes.func.isRequired
+  onAddTime: PropTypes.func.isRequired
 };
 
 export default ExamineeCard;

@@ -36,6 +36,18 @@ const getDashboardStats = (councilCode, turnCode, roomCode) =>
     params: { council_code: councilCode, council_turn_code: turnCode || undefined, room_code: roomCode || undefined }
   });
 
+// Nhận đề thi vào ca thi (2 bước: xem trước -> xác nhận) + theo dõi/thu hồi/khoá đề đã nhận
+const previewTestMixImport = (turnCode, formData) =>
+  axios.post(`${BASE}/council-turns/${turnCode}/test-mixes/import/preview`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+const commitTestMixImport = (turnCode, importToken) =>
+  axios.post(`${BASE}/council-turns/${turnCode}/test-mixes/import/commit`, { import_token: importToken });
+const getImportedTestMixes = (turnCode) => axios.get(`${BASE}/council-turns/${turnCode}/test-mixes`);
+const revokeTestMixBatch = (turnCode, testGroupId) => axios.delete(`${BASE}/council-turns/${turnCode}/test-mixes/batch/${testGroupId}`);
+const lockTestMix = (id) => axios.put(`${BASE}/test-mixes/${id}/lock`);
+const unlockTestMix = (id) => axios.put(`${BASE}/test-mixes/${id}/unlock`);
+
 // Khôi phục câu trả lời từ nhật ký + reset kết quả thí sinh
 const restoreAnswersFromLog = (account, payload) => axios.post(`${BASE}/examinees/${account}/restore-answers`, payload);
 const resetExamineeResult = (account, payload) => axios.post(`${BASE}/examinees/${account}/reset-result`, payload);
@@ -67,6 +79,12 @@ const chairmanService = {
   getExamineeActivityLogs,
   searchExaminees,
   getDashboardStats,
+  previewTestMixImport,
+  commitTestMixImport,
+  getImportedTestMixes,
+  revokeTestMixBatch,
+  lockTestMix,
+  unlockTestMix,
   restoreAnswersFromLog,
   resetExamineeResult,
   getExamineesByRoom,
