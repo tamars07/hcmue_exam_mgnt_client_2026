@@ -310,7 +310,7 @@ const ChairmanExamineesPage = () => {
                   onSelectAll={selectAllInRoom(room.room_code)}
                   onBulkAddTime={() => setAddTimeTarget({ roomCode: room.room_code, accounts: selectedByRoom[room.room_code] || [] })}
                   onBulkRestore={() => setRestoreTarget({ roomCode: room.room_code, accounts: selectedByRoom[room.room_code] || [] })}
-                  onDetail={(username) => setDetailAccount(username)}
+                  onDetail={(examinee) => setDetailAccount(examinee)}
                   onRestore={(examinee) => setRestoreTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
                   onAddTime={(examinee) => setAddTimeTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
                   onRestoreFromLog={(username) => setRestoreFromLogAccount(username)}
@@ -342,7 +342,12 @@ const ChairmanExamineesPage = () => {
           onDone={refreshAfterAction}
         />
       )}
-      <ExamineeDetailDialog open={!!detailAccount} onClose={() => setDetailAccount(null)} account={detailAccount} />
+      <ExamineeDetailDialog
+        open={!!detailAccount}
+        onClose={() => setDetailAccount(null)}
+        account={detailAccount?.username}
+        fullname={detailAccount?.fullname}
+      />
       <RestoreFromLogDialog
         open={!!restoreFromLogAccount}
         onClose={() => setRestoreFromLogAccount(null)}

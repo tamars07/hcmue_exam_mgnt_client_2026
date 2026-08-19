@@ -2,10 +2,10 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { ApartmentOutlined, TeamOutlined, HistoryOutlined, PieChartOutlined } from '@ant-design/icons';
+import { ApartmentOutlined, TeamOutlined, HistoryOutlined, PieChartOutlined, ImportOutlined } from '@ant-design/icons';
 
 // icons
-const icons = { ApartmentOutlined, TeamOutlined, HistoryOutlined, PieChartOutlined };
+const icons = { ApartmentOutlined, TeamOutlined, HistoryOutlined, PieChartOutlined, ImportOutlined };
 
 // ==============================|| MENU ITEMS - CHAIRMAN (ĐIỂM TRƯỞNG) ||============================== //
 
@@ -21,6 +21,13 @@ const chairman = {
       type: 'item',
       url: '/chairman/dashboard',
       icon: icons.PieChartOutlined
+    },
+    {
+      id: 'chairman-test-import',
+      title: <FormattedMessage id="chairman-test-import" defaultMessage="Nhận đề thi" />,
+      type: 'item',
+      url: '/chairman/test-import',
+      icon: icons.ImportOutlined
     },
     {
       id: 'chairman-rooms',
