@@ -8,6 +8,7 @@ import LogoutButton from './LogoutButton';
 import Notification from './Notification';
 import FullScreen from './FullScreen';
 import MobileSection from './MobileSection';
+import ActiveDatabaseInfo from './ActiveDatabaseInfo';
 
 import useConfig from 'hooks/useConfig';
 import DrawerHeader from 'layout/Dashboard/Drawer/DrawerHeader';
@@ -27,6 +28,7 @@ const HeaderContent = () => {
       {!downLG && <Search />}
       {downLG && <Box sx={{ width: '100%', ml: 1 }} />}
 
+      {!downLG && <ActiveDatabaseInfo />}
       <Notification />
       {!downLG && <FullScreen />}
       {downLG && <MobileSection />}

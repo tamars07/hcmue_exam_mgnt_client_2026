@@ -79,14 +79,14 @@ const AuthLogin = () => {
             }
           } catch (err) {
             console.error(err);
-            const isWrongDb = err?.error_code === 'WRONG_ACTIVE_DB';
+            const persist = err?.error_code === 'WRONG_ACTIVE_DB' || err?.error_code === 'ACCOUNT_NOT_ALLOWED';
             setState({
               open: true,
               vertical: 'bottom',
               horizontal: 'center',
               type: 'error',
-              message: err.error,
-              persist: isWrongDb
+              message: err?.error || err?.message || 'Đăng nhập thất bại',
+              persist
             });
             if (scriptedRef.current) {
               setStatus({ success: false });
