@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 // material-ui
-import { Button, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Button, Checkbox, FormControlLabel, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
 
 // project import
 import MainCard from 'components/MainCard';
@@ -9,7 +9,7 @@ import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import { isCouncilRunningToday, formatTurnLabel } from 'utils/council-schedule';
-import { DonutChart, YearBarChart } from './Charts';
+import { DonutChart, YearBarChart, RoomAttendanceBarChart } from './Charts';
 
 const STATUS_LABELS = {
   'CHƯA ĐĂNG NHẬP': 'Chưa đăng nhập',
@@ -32,6 +32,7 @@ const ChairmanDashboardPage = () => {
   const [turnCode, setTurnCode] = useState('');
   const [rooms, setRooms] = useState([]);
   const [roomCode, setRoomCode] = useState('');
+  const [onlyActiveRooms, setOnlyActiveRooms] = useState(true);
 
   const [stats, setStats] = useState(null);
   const [fetching, setFetching] = useState(false);
@@ -81,7 +82,7 @@ const ChairmanDashboardPage = () => {
     setFetching(true);
     try {
       await withLoading(async () => {
-        const res = await chairmanService.getDashboardStats(councilCode, turnCode, roomCode);
+        const res = await chairmanService.getDashboardStats(councilCode, turnCode, roomCode, onlyActiveRooms);
         setStats(res.data.data);
       }, 'Đang tải thống kê...');
     } catch (e) {
@@ -100,6 +101,11 @@ const ChairmanDashboardPage = () => {
   const yearBreakdown = stats?.birth_year_breakdown || [];
   const yearCategories = yearBreakdown.map((y) => String(y.year));
   const yearSeries = yearBreakdown.map((y) => y.count);
+
+  const roomBreakdown = stats?.room_breakdown || [];
+  const roomCategories = roomBreakdown.map((r) => r.room_name);
+  const roomPresentSeries = roomBreakdown.map((r) => r.present);
+  const roomAbsentSeries = roomBreakdown.map((r) => r.absent);
 
   return (
     <MainCard title="Tổng quan">
@@ -153,6 +159,13 @@ const ChairmanDashboardPage = () => {
               </MenuItem>
             ))}
           </TextField>
+          {!roomCode && (
+            <FormControlLabel
+              sx={{ mt: 0.5 }}
+              control={<Checkbox checked={onlyActiveRooms} onChange={(e) => setOnlyActiveRooms(e.target.checked)} />}
+              label="Chỉ thống kê trên các phòng đã kích hoạt"
+            />
+          )}
           <Button variant="contained" disabled={!councilCode || fetching} onClick={handleViewStats} sx={{ height: 40 }}>
             Xem thống kê
           </Button>
@@ -205,10 +218,19 @@ const ChairmanDashboardPage = () => {
                       <Typography variant="caption" color="text.secondary">
                         {s.percent}%
                       </Typography>
+                      {s.status === 'DỰ PHÒNG' && (
+                        <Typography variant="caption" color="text.secondary">
+                          Đã dùng: {stats.backup_used}/{s.count}
+                        </Typography>
+                      )}
                     </Stack>
                   </Grid>
                 ))}
               </Grid>
+            </MainCard>
+
+            <MainCard title="Có mặt / vắng mặt theo phòng thi (chỉ phòng đã kích hoạt)">
+              <RoomAttendanceBarChart categories={roomCategories} present={roomPresentSeries} absent={roomAbsentSeries} />
             </MainCard>
 
             <Grid container spacing={2}>
