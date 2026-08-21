@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Grid, Stack, Typography } from '@mui/material';
 
 // project import
@@ -17,11 +18,22 @@ const SystemLoginPage = () => (
           <Typography variant="h3" align="center">
             Quản trị hệ thống
           </Typography>
+          <Typography variant="body2" align="center" color="text.secondary">
+            Đăng nhập Super Admin để cấu hình cơ sở dữ liệu kỳ thi
+          </Typography>
           <img src={Logo} alt="Logo HCMUE" style={{ marginTop: 16, maxWidth: '200px' }} />
         </Stack>
       </Grid>
       <Grid item xs={12}>
         <SuperAdminLogin />
+      </Grid>
+      <Grid item xs={12}>
+        <Typography variant="body2" align="center" color="text.secondary">
+          Bạn là Admin / Điểm trưởng quản lý kỳ thi?{' '}
+          <Link to="/login" style={{ fontWeight: 600 }}>
+            Đăng nhập tại đây
+          </Link>
+        </Typography>
       </Grid>
     </Grid>
   </AuthWrapper>

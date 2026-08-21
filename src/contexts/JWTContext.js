@@ -16,6 +16,16 @@ import axios from 'utils/axios';
 
 const chance = new Chance();
 
+// Vai trò được phép dùng app này (Tổ chức thi / Quản lý Kì thi) — Cán bộ coi thi (MONITOR) và Thí
+// sinh (EXAMINEE) đăng nhập cùng endpoint /api/auth/login (dùng chung cho cả hệ thống coi thi
+// hcmue_client_2026) nhưng không có màn hình nào ở app này dành cho họ, nên chặn ngay ở đây thay vì
+// để họ vào rồi mới gặp lỗi 403 rời rạc từng API.
+const ALLOWED_ROLES = ['ADMIN', 'MODERATOR', 'CHAIRMAN'];
+const WRONG_ACCOUNT_TYPE_HINTS = {
+  MONITOR: 'Đây là tài khoản Cán bộ coi thi — vui lòng đăng nhập ở hệ thống coi thi.',
+  EXAMINEE: 'Đây là tài khoản Thí sinh — vui lòng đăng nhập ở hệ thống làm bài thi.'
+};
+
 // constant
 const initialState = {
   isLoggedIn: false,
@@ -110,6 +120,16 @@ export const JWTProvider = ({ children }) => {
     // const response = await axios.post('/api/account/login', { email, password });
     const response = await axios.post('/api/auth/login', { email, password });
     const { serviceToken, user } = response.data.data;
+
+    const roles = user?.roles || [];
+    if (!roles.some((r) => ALLOWED_ROLES.includes(r))) {
+      const hint = roles.map((r) => WRONG_ACCOUNT_TYPE_HINTS[r]).find(Boolean) || '';
+      const error = new Error('ACCOUNT_NOT_ALLOWED');
+      error.error_code = 'ACCOUNT_NOT_ALLOWED';
+      error.error = `Tài khoản này không có quyền truy cập hệ thống Tổ chức thi / Quản lý Kì thi.${hint ? ' ' + hint : ''}`;
+      throw error;
+    }
+
      // Lưu thông tin người dùng vào localStorage
      localStorage.setItem('user', JSON.stringify(user)); // Lưu thông tin người dùng vào localStorage
     //  localStorage.setItem('remainingTime', remainingTime);

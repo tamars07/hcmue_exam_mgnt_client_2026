@@ -24,8 +24,10 @@ const Login = () => {
         <Grid item xs={12}>
           <Stack direction="column" justifyContent="space-between" alignItems="center" sx={{ mb: { xs: -0.5, sm: 0.5 } }}>
             <Typography variant="h3" align="center">
-              {/* Kỳ thi đánh giá năng lực chuyên biệt */}
-              {/* Đăng nhập */}
+              Hệ thống Tổ chức thi HCMUE
+            </Typography>
+            <Typography variant="body2" align="center" color="text.secondary">
+              Đăng nhập dành cho Admin / Điểm trưởng
             </Typography>
             <img src={Logo} alt="Logo HCMUE" style={{ marginTop: 16, maxWidth: '200px' }} />
             <Typography
@@ -43,6 +45,14 @@ const Login = () => {
         <Grid item xs={12}>
           <AuthLogin isDemo={isLoggedIn} />
           {/* <DemoPage/> */}
+        </Grid>
+        <Grid item xs={12}>
+          <Typography variant="body2" align="center" color="text.secondary">
+            Bạn là Super Admin cấu hình cơ sở dữ liệu?{' '}
+            <Link to="/system/login" style={{ fontWeight: 600 }}>
+              Đăng nhập tại đây
+            </Link>
+          </Typography>
         </Grid>
       </Grid>
     </AuthWrapper>
