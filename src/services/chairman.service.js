@@ -30,10 +30,16 @@ const getExamineeActivityLogs = (examineeAccount) =>
 // Tìm thí sinh theo tài khoản/CCCD-MSSV/họ lót/tên khi không nhớ ca thi/phòng thi
 const searchExaminees = (councilCode, search) => axios.get(`${BASE}/logs/examinees/search`, { params: { council_code: councilCode, search } });
 
-// Tổng quan / thống kê thí sinh theo hội đồng thi (lọc thêm được theo ca thi/phòng thi)
-const getDashboardStats = (councilCode, turnCode, roomCode) =>
+// Tổng quan / thống kê thí sinh theo hội đồng thi (lọc thêm được theo ca thi/phòng thi). Khi không
+// chọn phòng cụ thể, onlyActiveRooms cho phép chỉ tính trên các phòng đã kích hoạt.
+const getDashboardStats = (councilCode, turnCode, roomCode, onlyActiveRooms) =>
   axios.get(`${BASE}/dashboard/stats`, {
-    params: { council_code: councilCode, council_turn_code: turnCode || undefined, room_code: roomCode || undefined }
+    params: {
+      council_code: councilCode,
+      council_turn_code: turnCode || undefined,
+      room_code: roomCode || undefined,
+      only_active_rooms: !roomCode && onlyActiveRooms ? 1 : undefined
+    }
   });
 
 // Nhận đề thi vào ca thi (2 bước: xem trước -> xác nhận) + theo dõi/thu hồi/khoá đề đã nhận

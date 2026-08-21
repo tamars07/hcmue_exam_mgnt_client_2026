@@ -94,4 +94,52 @@ YearBarChart.propTypes = {
   height: PropTypes.number
 };
 
-export { DonutChart, YearBarChart };
+const RoomAttendanceBarChart = ({ categories, present, absent, height = 300 }) => {
+  const theme = useTheme();
+
+  if (categories.length === 0) {
+    return (
+      <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
+        Không có phòng thi nào đã kích hoạt.
+      </Typography>
+    );
+  }
+
+  const options = {
+    chart: { type: 'bar', stacked: false, toolbar: { show: false }, foreColor: theme.palette.text.secondary },
+    plotOptions: { bar: { borderRadius: 4, columnWidth: '60%', dataLabels: { position: 'top' } } },
+    dataLabels: {
+      enabled: true,
+      offsetY: -20,
+      style: { fontSize: '11px', colors: [theme.palette.text.primary] },
+      background: { enabled: false }
+    },
+    xaxis: {
+      categories,
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+      labels: { style: { colors: theme.palette.text.secondary } }
+    },
+    yaxis: { labels: { formatter: (val) => Math.round(val) } },
+    colors: [theme.palette.success.main, theme.palette.error.main],
+    grid: { borderColor: theme.palette.divider, strokeDashArray: 4 },
+    legend: { position: 'bottom', labels: { colors: theme.palette.text.primary }, fontSize: '13px' },
+    tooltip: { theme: theme.palette.mode, y: { formatter: (val) => `${val} thí sinh` } }
+  };
+
+  const series = [
+    { name: 'Có mặt (đã đăng nhập)', data: present },
+    { name: 'Vắng mặt (chưa đăng nhập)', data: absent }
+  ];
+
+  return <ReactApexChart options={options} series={series} type="bar" height={height} />;
+};
+
+RoomAttendanceBarChart.propTypes = {
+  categories: PropTypes.array.isRequired,
+  present: PropTypes.array.isRequired,
+  absent: PropTypes.array.isRequired,
+  height: PropTypes.number
+};
+
+export { DonutChart, YearBarChart, RoomAttendanceBarChart };
