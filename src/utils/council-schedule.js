@@ -26,6 +26,18 @@ export const isCouncilRunningToday = (council) => {
   return today >= start && today <= finish;
 };
 
+// Trạng thái vòng đời thao tác dữ liệu của 1 ca thi (started_at/ended_at) — khác với lịch thi
+// (start_at): đây là cờ do điểm trưởng chủ động Bắt đầu/Kết thúc/Mở lại ở "Quản lý dữ liệu" (Giám
+// sát kì thi), dùng chung để hiển thị nhãn trạng thái ở các trang danh sách ca thi khác.
+export const getTurnDataStatus = (turn) => {
+  if (turn?.ended_at) return { key: 'ended', label: 'Kết thúc', color: 'error' };
+  if (turn?.started_at) {
+    if (turn?.has_active_room) return { key: 'running', label: 'Đang thi', color: 'success' };
+    return { key: 'not_exam_yet', label: 'Chưa thi', color: 'warning' };
+  }
+  return { key: 'pending', label: 'Chưa bắt đầu', color: 'default' };
+};
+
 // Kiểm tra 1 ca thi có diễn ra đúng ngày hôm nay hay không (so sánh start_at theo ngày, bỏ qua
 // giờ) — dùng để chặn thao tác (kích hoạt/bù giờ/phục hồi/reset...) trên ca thi khác ngày, chỉ cho
 // xem thông tin (read-only) với các ca thi đó trong nhóm menu Quản lý Kì thi.

@@ -49,7 +49,7 @@ const getProgressColor = (answeredCount, totalQuestions) => {
 
 // onRestoreFromLog/onReset (Phục hồi từ nhật ký, Reset kết quả) tạm ẩn khỏi giao diện — không nhận
 // nữa ở đây nhưng cha vẫn có thể truyền xuống bình thường, không lỗi gì, chỉ cần thêm lại khi bật.
-const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, onRestore, onAddTime }) => {
+const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, onRestore, onAddTime, onViewLogs }) => {
   const {
     seat_number: seatNumber,
     status,
@@ -188,6 +188,9 @@ const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, 
             >
               Bù giờ
             </Button>
+            <Button variant="outlined" size="small" onClick={() => onViewLogs(examinee)}>
+              Xem logs
+            </Button>
             {/* TẠM ẨN: "Phục hồi từ nhật ký" và "Reset kết quả" đang chạy chưa đúng — ẩn khỏi giao
                 diện cho tới khi sửa xong, giữ nguyên props/dialog/handler bên dưới để bật lại nhanh. */}
           </Stack>
@@ -204,7 +207,8 @@ ExamineeCard.propTypes = {
   onToggleSelect: PropTypes.func.isRequired,
   onDetail: PropTypes.func.isRequired,
   onRestore: PropTypes.func.isRequired,
-  onAddTime: PropTypes.func.isRequired
+  onAddTime: PropTypes.func.isRequired,
+  onViewLogs: PropTypes.func.isRequired
 };
 
 export default ExamineeCard;

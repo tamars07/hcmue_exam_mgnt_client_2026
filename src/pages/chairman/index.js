@@ -18,18 +18,54 @@ import {
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
-import { CheckCircleOutlined, DownOutlined, PoweroffOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import {
+  CaretRightOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DownOutlined,
+  PauseCircleOutlined,
+  PoweroffOutlined,
+  ReloadOutlined,
+  StopOutlined,
+  ThunderboltOutlined
+} from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
-import { isCouncilRunningToday, formatTurnLabel, isTurnToday } from 'utils/council-schedule';
+import { isCouncilRunningToday, formatTurnLabel, isTurnToday, getTurnDataStatus } from 'utils/council-schedule';
 
-// ==============================|| ĐIỂM TRƯỞNG - KÍCH HOẠT PHÒNG THI ||============================== //
+// ==============================|| ĐIỂM TRƯỞNG - QUẢN LÝ CA THI ||============================== //
+
+const TURN_STATUS_ICONS = {
+  pending: <ClockCircleOutlined />,
+  not_exam_yet: <PauseCircleOutlined />,
+  running: <CheckCircleOutlined />,
+  ended: <StopOutlined />
+};
+
+const LIFECYCLE_TITLES = {
+  start: 'Xác nhận Bắt đầu ca thi',
+  end: 'Xác nhận Kết thúc ca thi',
+  resume: 'Xác nhận Mở lại ca thi'
+};
+
+const LIFECYCLE_LOADING_MESSAGES = {
+  start: 'Đang bắt đầu ca thi... Vui lòng chờ',
+  end: 'Đang kết thúc ca thi... Vui lòng chờ',
+  resume: 'Đang mở lại ca thi... Vui lòng chờ'
+};
+
+const LIFECYCLE_SUCCESS_MESSAGES = {
+  start: 'Đã bắt đầu ca thi',
+  end: 'Đã kết thúc ca thi',
+  resume: 'Đã mở lại ca thi'
+};
 
 // Đảm bảo hiệu ứng chờ hiện tối thiểu 3 giây sau khi bấm Kích hoạt/Huỷ kích hoạt, kể cả khi API
 // phản hồi nhanh hơn — tránh cảm giác thao tác "chưa chắc đã chạy" với 1 hành động quan trọng.
@@ -53,6 +89,7 @@ const ChairmanRoomsPage = () => {
   const [councils, setCouncils] = useState([]);
   const [councilCode, setCouncilCode] = useState('');
   const [turns, setTurns] = useState([]);
+  const [turnStatusByCode, setTurnStatusByCode] = useState({});
 
   const [expandedTurnCode, setExpandedTurnCode] = useState(false);
   const [roomsByTurn, setRoomsByTurn] = useState({});
@@ -62,6 +99,11 @@ const ChairmanRoomsPage = () => {
   // { open, action: 'activate' | 'deactivate', scope: { type: 'bulk' } | { type: 'single', room } }
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [confirmMessage, setConfirmMessage] = useState('');
+
+  // { turnCode, action: 'start' | 'end' | 'resume' }
+  const [lifecycleDialog, setLifecycleDialog] = useState(null);
+  const [lifecycleMessage, setLifecycleMessage] = useState('');
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
 
   useEffect(() => {
     chairmanService
@@ -77,16 +119,46 @@ const ChairmanRoomsPage = () => {
       .catch(() => openSnackbar({ open: true, message: 'Không tải được hội đồng thi', variant: 'alert', alert: { color: 'error' } }));
   }, []);
 
+  // Trạng thái đầy đủ (can_start/can_resume/is_backup/is_cleaned) của từng ca thi — cần gọi riêng vì
+  // getCouncilTurns() chỉ trả về started_at/ended_at thô, không tính được xung đột với ca thi khác.
+  const fetchTurnStatuses = async (turnList) => {
+    const entries = await Promise.all(
+      turnList.map((t) =>
+        chairmanService
+          .getTurnDataStatus(t.code)
+          .then((res) => [t.code, res.data.data])
+          .catch(() => [t.code, null])
+      )
+    );
+    setTurnStatusByCode(Object.fromEntries(entries));
+  };
+
+  const refreshTurns = async () => {
+    if (!councilCode) return;
+    try {
+      const res = await chairmanService.getCouncilTurns(councilCode);
+      setTurns(res.data.data);
+      fetchTurnStatuses(res.data.data);
+    } catch (e) {
+      // giữ nguyên danh sách cũ nếu tải lại lỗi, không cần báo ồn ào cho 1 lần refresh nền
+    }
+  };
+
   useEffect(() => {
     setTurns([]);
+    setTurnStatusByCode({});
     setRoomsByTurn({});
     setExpandedTurnCode(false);
     setSelectedRoomIds([]);
     if (!councilCode) return;
     chairmanService
       .getCouncilTurns(councilCode)
-      .then((res) => setTurns(res.data.data))
+      .then((res) => {
+        setTurns(res.data.data);
+        fetchTurnStatuses(res.data.data);
+      })
       .catch(() => setTurns([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [councilCode]);
 
   const fetchTurnRooms = async (turnCode) => {
@@ -152,13 +224,40 @@ const ChairmanRoomsPage = () => {
       setConfirmDialog(null);
       setSelectedRoomIds([]);
       if (expandedTurnCode) fetchTurnRooms(expandedTurnCode);
+      // Kích hoạt/huỷ kích hoạt phòng có thể đổi trạng thái hiển thị "Chưa thi"/"Đang thi" của ca
+      // thi (has_active_room) — nạp lại danh sách ca thi để Chip trạng thái cập nhật ngay.
+      refreshTurns();
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Thao tác thất bại', variant: 'alert', alert: { color: 'error' } });
     }
   };
 
+  const openLifecycle = (turnCode, action) => {
+    setLifecycleMessage('');
+    setLifecycleDialog({ turnCode, action });
+  };
+
+  const confirmLifecycle = async () => {
+    if (!lifecycleDialog) return;
+    const { turnCode, action } = lifecycleDialog;
+    const fn =
+      action === 'start' ? chairmanService.startTurnData : action === 'end' ? chairmanService.endTurnData : chairmanService.resumeTurnData;
+
+    setLifecycleBusy(true);
+    try {
+      await withLoading(() => fn(turnCode, lifecycleMessage), LIFECYCLE_LOADING_MESSAGES[action]);
+      openSnackbar({ open: true, message: LIFECYCLE_SUCCESS_MESSAGES[action], variant: 'alert', alert: { color: 'success' } });
+      setLifecycleDialog(null);
+      refreshTurns();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Thao tác thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setLifecycleBusy(false);
+    }
+  };
+
   return (
-    <MainCard title="Kích hoạt phòng thi">
+    <MainCard title="Quản lý ca thi">
       <Stack spacing={2}>
         <TextField
           select
@@ -193,16 +292,107 @@ const ChairmanRoomsPage = () => {
           const allSelected = rooms.length > 0 && selectedRoomIds.length === rooms.length;
           const someSelected = selectedRoomIds.length > 0 && !allSelected;
           const turnIsToday = isTurnToday(turn);
+          const dataStatus = getTurnDataStatus(turn);
+          const lifecycle = turnStatusByCode[turn.code];
+          // Cố ý không dựa vào dataStatus.key === 'running' ở đây — trạng thái đó chỉ đúng SAU KHI
+          // đã có ít nhất 1 phòng được kích hoạt, dùng nó để khoá nút kích hoạt sẽ khiến không thể
+          // kích hoạt phòng ĐẦU TIÊN của ca thi. Ràng buộc thật sự chỉ cần ca thi đã bắt đầu.
+          const canActivateRoom = !!turn.started_at && !turn.ended_at;
+
+          const startTooltip =
+            !lifecycle || lifecycle.can_start
+              ? ''
+              : !lifecycle.start_window_open
+              ? `Chưa đến thời điểm được phép bắt đầu ca thi — mở lúc ${lifecycle.start_window_at}`
+              : lifecycle.blocking_started_turn
+              ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
+              : lifecycle.blocking_uncleaned_turn
+              ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
+              : '';
+          const resumeTooltip =
+            !lifecycle || lifecycle.can_resume
+              ? ''
+              : lifecycle.is_cleaned
+              ? 'Dữ liệu ca thi này đã được dọn dẹp, không thể mở lại'
+              : lifecycle.blocking_started_turn
+              ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
+              : lifecycle.blocking_uncleaned_turn
+              ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
+              : '';
 
           return (
             <Accordion key={turn.code} expanded={expandedTurnCode === turn.code} onChange={handleAccordionChange(turn.code)}>
               <AccordionSummary expandIcon={<DownOutlined />}>
-                <Stack direction="row" spacing={2} alignItems="center" sx={{ width: '100%', flexWrap: 'wrap', rowGap: 0.5 }}>
-                  <Typography sx={{ fontWeight: 500, minWidth: 160 }}>
-                    {turn.code} - {formatTurnLabel(turn)}
-                  </Typography>
-                  <Chip label={`${turn.no_rooms} phòng`} size="small" />
-                  {!turnIsToday && <Chip label="Chỉ xem — không phải ca thi hôm nay" size="small" color="default" />}
+                <Stack
+                  direction="row"
+                  spacing={2}
+                  alignItems="center"
+                  justifyContent="space-between"
+                  sx={{ width: '100%', flexWrap: 'wrap', rowGap: 1 }}
+                >
+                  <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={0.5}>
+                    <Typography sx={{ fontWeight: 500, minWidth: 160 }}>
+                      {turn.code} - {formatTurnLabel(turn)}
+                    </Typography>
+                    <Chip label={`${turn.no_rooms} phòng`} size="small" />
+                    <Chip label={dataStatus.label} color={dataStatus.color} size="small" icon={TURN_STATUS_ICONS[dataStatus.key]} />
+                    {!turnIsToday && <Chip label="Chỉ xem — không phải ca thi hôm nay" size="small" color="default" />}
+                  </Stack>
+
+                  <Stack direction="row" spacing={0.5}>
+                    {dataStatus.key === 'pending' && (
+                      <Tooltip title={startTooltip}>
+                        <span>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<CaretRightOutlined />}
+                            disabled={!lifecycle || !lifecycle.can_start}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openLifecycle(turn.code, 'start');
+                            }}
+                          >
+                            Bắt đầu
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                    {dataStatus.key === 'running' && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="error"
+                        startIcon={<StopOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openLifecycle(turn.code, 'end');
+                        }}
+                      >
+                        Kết thúc
+                      </Button>
+                    )}
+                    {dataStatus.key === 'ended' && lifecycle && !lifecycle.is_cleaned && (
+                      <Tooltip title={resumeTooltip}>
+                        <span>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="info"
+                            startIcon={<ReloadOutlined />}
+                            disabled={!lifecycle.can_resume}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openLifecycle(turn.code, 'resume');
+                            }}
+                          >
+                            Mở lại
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                  </Stack>
                 </Stack>
               </AccordionSummary>
               <AccordionDetails>
@@ -212,6 +402,9 @@ const ChairmanRoomsPage = () => {
                   <Typography color="text.secondary">Ca thi này chưa gán phòng thi nào.</Typography>
                 ) : (
                   <Stack spacing={1.5}>
+                    {turnIsToday && !canActivateRoom && (
+                      <Alert severity="info">Cần bấm &quot;Bắt đầu&quot; ca thi trước khi kích hoạt phòng thi.</Alert>
+                    )}
                     <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={1}>
                       <FormControlLabel
                         control={
@@ -231,7 +424,7 @@ const ChairmanRoomsPage = () => {
                         variant="contained"
                         color="success"
                         startIcon={<ThunderboltOutlined />}
-                        disabled={!turnIsToday || selectedRoomIds.length === 0}
+                        disabled={!turnIsToday || !canActivateRoom || selectedRoomIds.length === 0}
                         onClick={() => openConfirm('activate', { type: 'bulk' })}
                       >
                         Kích hoạt đã chọn ({selectedRoomIds.length})
@@ -262,7 +455,7 @@ const ChairmanRoomsPage = () => {
                             {room.room.code} - {room.room.name}
                           </Typography>
                           {room.is_active ? (
-                            <Chip label="Đang kích hoạt" color="success" size="small" icon={<CheckCircleOutlined />} />
+                            <Chip label="Đã kích hoạt" color="success" size="small" icon={<CheckCircleOutlined />} />
                           ) : (
                             <Chip label="Chưa kích hoạt" size="small" />
                           )}
@@ -277,7 +470,7 @@ const ChairmanRoomsPage = () => {
                                 size="small"
                                 variant="outlined"
                                 color="success"
-                                disabled={!turnIsToday}
+                                disabled={!turnIsToday || !canActivateRoom}
                                 onClick={() => openConfirm('activate', { type: 'single', room })}
                               >
                                 Kích hoạt
@@ -330,6 +523,52 @@ const ChairmanRoomsPage = () => {
         <DialogActions>
           <Button onClick={() => setConfirmDialog(null)}>Huỷ</Button>
           <Button variant="contained" color={confirmDialog?.action === 'activate' ? 'success' : 'warning'} onClick={handleConfirm}>
+            Xác nhận
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!lifecycleDialog} onClose={() => setLifecycleDialog(null)} fullWidth maxWidth="sm">
+        <DialogTitle>{lifecycleDialog ? LIFECYCLE_TITLES[lifecycleDialog.action] : ''}</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            {lifecycleDialog?.action === 'start' && (
+              <Alert severity="warning">
+                Đánh dấu ca thi <strong>{lifecycleDialog.turnCode}</strong> đang chiếm dụng hạ tầng đề thi dùng chung. Chỉ 1 ca thi được
+                bắt đầu tại 1 thời điểm trên toàn hệ thống.
+              </Alert>
+            )}
+            {lifecycleDialog?.action === 'end' && (
+              <Alert severity="error">
+                Sau khi kết thúc, ca thi <strong>{lifecycleDialog.turnCode}</strong> sẽ bị khoá hoàn toàn: không thể đăng nhập lại (cán bộ
+                coi thi/thí sinh), không thể nhận đề hoặc tiếp tục làm bài. Thí sinh đang làm bài dở vẫn nộp bài được bình thường.
+              </Alert>
+            )}
+            {lifecycleDialog?.action === 'resume' && (
+              <Alert severity="warning">
+                Mở lại ca thi <strong>{lifecycleDialog.turnCode}</strong> — cho phép đăng nhập/nhận đề/làm bài trở lại như trước khi kết
+                thúc. Nếu đã Sao lưu Dữ liệu bài thi trước đó, trạng thái đó sẽ bị đặt lại: cần sao lưu lại từ đầu nếu kết thúc ca thi này
+                lần nữa.
+              </Alert>
+            )}
+            <TextField
+              fullWidth
+              multiline
+              minRows={2}
+              label="Ghi chú (không bắt buộc)"
+              value={lifecycleMessage}
+              onChange={(e) => setLifecycleMessage(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setLifecycleDialog(null)}>Huỷ</Button>
+          <Button
+            variant="contained"
+            color={lifecycleDialog?.action === 'end' ? 'error' : lifecycleDialog?.action === 'resume' ? 'info' : 'success'}
+            disabled={lifecycleBusy}
+            onClick={confirmLifecycle}
+          >
             Xác nhận
           </Button>
         </DialogActions>

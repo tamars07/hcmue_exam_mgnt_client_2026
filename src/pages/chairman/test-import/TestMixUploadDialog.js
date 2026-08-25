@@ -10,6 +10,9 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
+  Radio,
+  RadioGroup,
   Stack,
   Table,
   TableBody,
@@ -37,16 +40,35 @@ const TestMixUploadDialog = ({ open, onClose, turnCode, turnLabel, onImported })
 
   const [step, setStep] = useState('upload'); // 'upload' | 'preview'
   const [file, setFile] = useState(null);
+  const [passwordSource, setPasswordSource] = useState('manual'); // 'manual' | 'file'
   const [password, setPassword] = useState('');
+  const [passwordFileName, setPasswordFileName] = useState('');
   const [preview, setPreview] = useState(null);
   const [importToken, setImportToken] = useState('');
 
   const reset = () => {
     setStep('upload');
     setFile(null);
+    setPasswordSource('manual');
     setPassword('');
+    setPasswordFileName('');
     setPreview(null);
     setImportToken('');
+  };
+
+  const handlePasswordFile = (selectedFile) => {
+    if (!selectedFile) return;
+    setPasswordFileName(selectedFile.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      // File .txt chứa mật khẩu có thể có xuống dòng/khoảng trắng thừa ở cuối do trình soạn thảo
+      // tự thêm — trim để không vô tình sai mật khẩu vì 1 ký tự vô hình.
+      setPassword(String(reader.result || '').trim());
+    };
+    reader.onerror = () => {
+      openSnackbar({ open: true, message: 'Không đọc được file mật khẩu', variant: 'alert', alert: { color: 'error' } });
+    };
+    reader.readAsText(selectedFile);
   };
 
   const handleClose = () => {
@@ -106,7 +128,35 @@ const TestMixUploadDialog = ({ open, onClose, turnCode, turnLabel, onImported })
               {file ? file.name : 'Chọn file đề thi (.dat)'}
               <input type="file" hidden onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </Button>
-            <TextField fullWidth type="password" label="Mật khẩu mở đề" value={password} onChange={(e) => setPassword(e.target.value)} />
+
+            <RadioGroup
+              row
+              value={passwordSource}
+              onChange={(e) => {
+                setPasswordSource(e.target.value);
+                setPassword('');
+                setPasswordFileName('');
+              }}
+            >
+              <FormControlLabel value="manual" control={<Radio />} label="Tự nhập mật khẩu" />
+              <FormControlLabel value="file" control={<Radio />} label="Nhập từ file (.txt)" />
+            </RadioGroup>
+
+            {passwordSource === 'manual' ? (
+              <TextField fullWidth type="password" label="Mật khẩu mở đề" value={password} onChange={(e) => setPassword(e.target.value)} />
+            ) : (
+              <Stack spacing={1}>
+                <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
+                  {passwordFileName || 'Chọn file mật khẩu (.txt)'}
+                  <input type="file" accept=".txt" hidden onChange={(e) => handlePasswordFile(e.target.files?.[0] || null)} />
+                </Button>
+                {password && (
+                  <Typography variant="caption" color="success.main">
+                    Đã đọc được mật khẩu từ file.
+                  </Typography>
+                )}
+              </Stack>
+            )}
           </Stack>
         )}
 

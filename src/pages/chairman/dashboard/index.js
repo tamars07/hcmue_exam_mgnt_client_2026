@@ -1,15 +1,23 @@
 import { useEffect, useState } from 'react';
 
 // material-ui
-import { Button, Checkbox, FormControlLabel, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Checkbox, Chip, FormControlLabel, Grid, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { CheckCircleOutlined, ClockCircleOutlined, PauseCircleOutlined, StopOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
-import { isCouncilRunningToday, formatTurnLabel } from 'utils/council-schedule';
+import { isCouncilRunningToday, formatTurnLabel, getTurnDataStatus } from 'utils/council-schedule';
 import { DonutChart, YearBarChart, RoomAttendanceBarChart } from './Charts';
+
+const TURN_STATUS_ICONS = {
+  pending: <ClockCircleOutlined />,
+  not_exam_yet: <PauseCircleOutlined />,
+  running: <CheckCircleOutlined />,
+  ended: <StopOutlined />
+};
 
 const STATUS_LABELS = {
   'CHƯA ĐĂNG NHẬP': 'Chưa đăng nhập',
@@ -82,8 +90,15 @@ const ChairmanDashboardPage = () => {
     setFetching(true);
     try {
       await withLoading(async () => {
-        const res = await chairmanService.getDashboardStats(councilCode, turnCode, roomCode, onlyActiveRooms);
-        setStats(res.data.data);
+        // Trạng thái ca thi (started_at/ended_at) có thể đã đổi ở nơi khác (vd Giám sát kì thi mở ở
+        // tab khác) sau lần nạp turns ban đầu — nạp lại danh sách ca thi mỗi lần xem thống kê để Chip
+        // trạng thái luôn phản ánh đúng dữ liệu hiện tại, không dùng lại state cũ đã lỗi thời.
+        const [statsRes, turnsRes] = await Promise.all([
+          chairmanService.getDashboardStats(councilCode, turnCode, roomCode, onlyActiveRooms),
+          chairmanService.getCouncilTurns(councilCode)
+        ]);
+        setStats(statsRes.data.data);
+        setTurns(turnsRes.data.data);
       }, 'Đang tải thống kê...');
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Không tải được thống kê', variant: 'alert', alert: { color: 'error' } });
@@ -91,6 +106,9 @@ const ChairmanDashboardPage = () => {
       setFetching(false);
     }
   };
+
+  const selectedTurn = turns.find((t) => t.code === turnCode);
+  const turnDataStatus = selectedTurn ? getTurnDataStatus(selectedTurn) : null;
 
   const statusBreakdown = stats?.status_breakdown || [];
 
@@ -177,28 +195,30 @@ const ChairmanDashboardPage = () => {
           </Typography>
         ) : (
           <>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <MainCard content={false} sx={{ p: 2, textAlign: 'center' }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              {turnDataStatus && (
+                <Box sx={{ width: { xs: '100%', sm: '30%' } }}>
+                  <MainCard content={false} sx={{ p: 2, textAlign: 'center', height: '100%' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Trạng thái ca thi
+                    </Typography>
+                    <Stack alignItems="center" sx={{ mt: 1 }}>
+                      <Chip label={turnDataStatus.label} color={turnDataStatus.color} icon={TURN_STATUS_ICONS[turnDataStatus.key]} />
+                    </Stack>
+                  </MainCard>
+                </Box>
+              )}
+              <Box sx={{ width: { xs: '100%', sm: turnDataStatus ? '70%' : '100%' } }}>
+                <MainCard content={false} sx={{ p: 2, textAlign: 'center', height: '100%' }}>
                   <Typography variant="body2" color="text.secondary">
-                    Tổng số thí sinh có tên theo danh sách (không tính dự phòng)
+                    Tổng số thí sinh (không tính dự phòng)
                   </Typography>
                   <Typography variant="h2" sx={{ mt: 0.5 }}>
                     {stats.total_official}
                   </Typography>
                 </MainCard>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <MainCard content={false} sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Tổng số thí sinh (kể cả dự phòng)
-                  </Typography>
-                  <Typography variant="h2" sx={{ mt: 0.5 }}>
-                    {stats.total_all}
-                  </Typography>
-                </MainCard>
-              </Grid>
-            </Grid>
+              </Box>
+            </Stack>
 
             <MainCard title="Trạng thái thí sinh">
               <Grid container spacing={2}>

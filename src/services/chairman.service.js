@@ -54,6 +54,16 @@ const revokeTestMixBatch = (turnCode, testGroupId) => axios.delete(`${BASE}/coun
 const lockTestMix = (id) => axios.put(`${BASE}/test-mixes/${id}/lock`);
 const unlockTestMix = (id) => axios.put(`${BASE}/test-mixes/${id}/unlock`);
 
+// Quản lý dữ liệu ca thi: Bắt đầu/Kết thúc, Sao lưu Dữ liệu bài thi, Dọn dẹp dữ liệu
+const getTurnDataStatus = (turnCode) => axios.get(`${BASE}/council-turns/${turnCode}/data-status`);
+const startTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-start`, { message });
+const endTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-end`, { message });
+const resumeTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-resume`, { message });
+const backupTurnData = (turnCode, message) =>
+  axios.post(`${BASE}/council-turns/${turnCode}/data-backup`, { message }, { responseType: 'blob' });
+const cleanupTurnData = (turnCode, confirmCode, message) =>
+  axios.post(`${BASE}/council-turns/${turnCode}/data-cleanup`, { confirm_code: confirmCode, message });
+
 // Khôi phục câu trả lời từ nhật ký + reset kết quả thí sinh
 const restoreAnswersFromLog = (account, payload) => axios.post(`${BASE}/examinees/${account}/restore-answers`, payload);
 const resetExamineeResult = (account, payload) => axios.post(`${BASE}/examinees/${account}/reset-result`, payload);
@@ -91,6 +101,12 @@ const chairmanService = {
   revokeTestMixBatch,
   lockTestMix,
   unlockTestMix,
+  getTurnDataStatus,
+  startTurnData,
+  endTurnData,
+  resumeTurnData,
+  backupTurnData,
+  cleanupTurnData,
   restoreAnswersFromLog,
   resetExamineeResult,
   getExamineesByRoom,

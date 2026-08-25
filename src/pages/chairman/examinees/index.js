@@ -7,6 +7,7 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Divider,
   FormControl,
   FormControlLabel,
   InputLabel,
@@ -19,7 +20,7 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { SyncOutlined } from '@ant-design/icons';
+import { SyncOutlined, DatabaseOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
@@ -30,11 +31,14 @@ import RoomMonitorSection from './RoomMonitorSection';
 import AddTimeDialog from './AddTimeDialog';
 import RestoreDialog from './RestoreDialog';
 import ExamineeDetailDialog from './ExamineeDetailDialog';
+import ExamineeLogsDialog from './ExamineeLogsDialog';
 import RestoreFromLogDialog from './RestoreFromLogDialog';
 import ResetResultDialog from './ResetResultDialog';
+import TurnDataManagementDialog from './TurnDataManagementDialog';
 import { isCouncilRunningToday, formatTurnLabel, isTurnToday } from 'utils/council-schedule';
 
 const AUTO_SYNC_INTERVAL_OPTIONS = [10, 30, 60, 120, 300];
+const ACTIVATED_ROOMS_VALUE = '__ACTIVATED_ROOMS__';
 
 // ==============================|| GIÁM SÁT KÌ THI ||============================== //
 
@@ -60,8 +64,10 @@ const ChairmanExamineesPage = () => {
   const [addTimeTarget, setAddTimeTarget] = useState(null); // { roomCode, accounts }
   const [restoreTarget, setRestoreTarget] = useState(null); // { roomCode, accounts }
   const [detailAccount, setDetailAccount] = useState(null);
+  const [logsAccount, setLogsAccount] = useState(null);
   const [restoreFromLogAccount, setRestoreFromLogAccount] = useState(null);
   const [resetTarget, setResetTarget] = useState(null); // examinee row
+  const [dataManagementOpen, setDataManagementOpen] = useState(false);
 
   useEffect(() => {
     chairmanService
@@ -188,63 +194,112 @@ const ChairmanExamineesPage = () => {
 
   const selectedTurn = turns.find((t) => t.code === turnCode);
   const turnIsToday = isTurnToday(selectedTurn);
+  const activatedRoomCodes = availableRooms.filter((r) => r.is_active).map((r) => r.room_code);
 
   return (
-    <MainCard title="Giám sát kì thi">
+    <MainCard title="Giám sát ca thi">
       <Stack spacing={2}>
-        <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2} alignItems="flex-start">
-          <TextField
-            select
-            size="small"
-            label="Hội đồng thi"
-            value={councilCode}
-            onChange={(e) => setCouncilCode(e.target.value)}
-            sx={{ minWidth: 240 }}
-            helperText={councils.length === 0 ? 'Không có hội đồng thi nào diễn ra hôm nay' : ''}
-          >
-            {councils.map((c) => (
-              <MenuItem key={c.code} value={c.code}>
-                {c.desc || c.code}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="Ca thi" value={turnCode} disabled={!councilCode} onChange={(e) => setTurnCode(e.target.value)} sx={{ minWidth: 200 }}>
-            {turns.map((t) => (
-              <MenuItem key={t.code} value={t.code}>
-                {formatTurnLabel(t)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <FormControl size="small" disabled={!turnCode} sx={{ minWidth: 260 }}>
-            <InputLabel id="rooms-label">Phòng thi</InputLabel>
-            <Select
-              labelId="rooms-label"
-              multiple
-              value={selectedRoomCodes}
-              onChange={(e) => setSelectedRoomCodes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-              input={<OutlinedInput label="Phòng thi" />}
-              renderValue={(selected) =>
-                selected.length > 0
-                  ? availableRooms
-                      .filter((r) => selected.includes(r.room_code))
-                      .map((r) => r.room_name)
-                      .join(', ')
-                  : 'Chọn phòng thi'
-              }
+        <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2} alignItems="flex-start" justifyContent="space-between">
+          <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2} alignItems="flex-start">
+            <TextField
+              select
+              size="small"
+              label="Hội đồng thi"
+              value={councilCode}
+              onChange={(e) => setCouncilCode(e.target.value)}
+              sx={{ minWidth: 240 }}
+              helperText={councils.length === 0 ? 'Không có hội đồng thi nào diễn ra hôm nay' : ''}
             >
-              {availableRooms.map((r) => (
-                <MenuItem key={r.room_code} value={r.room_code}>
-                  <Checkbox checked={selectedRoomCodes.includes(r.room_code)} size="small" />
-                  <ListItemText primary={r.room_name} />
+              {councils.map((c) => (
+                <MenuItem key={c.code} value={c.code}>
+                  {c.desc || c.code}
                 </MenuItem>
               ))}
-            </Select>
-          </FormControl>
-          <Button variant="contained" disabled={!turnCode || selectedRoomCodes.length === 0 || fetching} onClick={handleFetchClick}>
-            Lấy dữ liệu
-          </Button>
-          <Button variant="outlined" disabled={selectedRoomCodes.length === 0} onClick={() => setSelectedRoomCodes([])}>
-            Chọn lại
+            </TextField>
+            <TextField select size="small" label="Ca thi" value={turnCode} disabled={!councilCode} onChange={(e) => setTurnCode(e.target.value)} sx={{ minWidth: 200 }}>
+              {turns.map((t) => (
+                <MenuItem key={t.code} value={t.code}>
+                  {formatTurnLabel(t)}
+                </MenuItem>
+              ))}
+            </TextField>
+            <FormControl size="small" disabled={!turnCode} sx={{ minWidth: 260 }}>
+              <InputLabel id="rooms-label">Phòng thi</InputLabel>
+              <Select
+                labelId="rooms-label"
+                multiple
+                value={selectedRoomCodes}
+                onChange={(e) => {
+                  const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                  if (value.includes(ACTIVATED_ROOMS_VALUE)) {
+                    const allActivatedSelected =
+                      activatedRoomCodes.length > 0 &&
+                      selectedRoomCodes.length === activatedRoomCodes.length &&
+                      activatedRoomCodes.every((c) => selectedRoomCodes.includes(c));
+                    setSelectedRoomCodes(allActivatedSelected ? [] : activatedRoomCodes);
+                    return;
+                  }
+                  setSelectedRoomCodes(value);
+                }}
+                input={<OutlinedInput label="Phòng thi" />}
+                renderValue={(selected) =>
+                  selected.length === 0
+                    ? 'Chọn phòng thi'
+                    : activatedRoomCodes.length > 0 &&
+                      selected.length === activatedRoomCodes.length &&
+                      activatedRoomCodes.every((c) => selected.includes(c))
+                    ? 'Phòng đã kích hoạt'
+                    : availableRooms
+                        .filter((r) => selected.includes(r.room_code))
+                        .map((r) => r.room_name)
+                        .join(', ')
+                }
+              >
+                <MenuItem value={ACTIVATED_ROOMS_VALUE} disabled={activatedRoomCodes.length === 0}>
+                  <Checkbox
+                    checked={
+                      activatedRoomCodes.length > 0 &&
+                      selectedRoomCodes.length === activatedRoomCodes.length &&
+                      activatedRoomCodes.every((c) => selectedRoomCodes.includes(c))
+                    }
+                    indeterminate={
+                      activatedRoomCodes.length > 0 &&
+                      selectedRoomCodes.some((c) => activatedRoomCodes.includes(c)) &&
+                      !(selectedRoomCodes.length === activatedRoomCodes.length && activatedRoomCodes.every((c) => selectedRoomCodes.includes(c)))
+                    }
+                    size="small"
+                  />
+                  <ListItemText primary="Phòng đã kích hoạt" />
+                </MenuItem>
+                <Divider />
+                {availableRooms.map((r) => (
+                  <MenuItem key={r.room_code} value={r.room_code}>
+                    <Checkbox checked={selectedRoomCodes.includes(r.room_code)} size="small" />
+                    <ListItemText primary={r.room_name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              color="success"
+              disabled={!turnCode || selectedRoomCodes.length === 0 || fetching}
+              onClick={handleFetchClick}
+            >
+              Lấy dữ liệu
+            </Button>
+            <Button variant="outlined" color="warning" disabled={selectedRoomCodes.length === 0} onClick={() => setSelectedRoomCodes([])}>
+              Chọn lại
+            </Button>
+          </Stack>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<DatabaseOutlined />}
+            disabled={!turnCode}
+            onClick={() => setDataManagementOpen(true)}
+          >
+            Quản lý dữ liệu
           </Button>
         </Stack>
 
@@ -313,6 +368,7 @@ const ChairmanExamineesPage = () => {
                   onDetail={(examinee) => setDetailAccount(examinee)}
                   onRestore={(examinee) => setRestoreTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
                   onAddTime={(examinee) => setAddTimeTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
+                  onViewLogs={(examinee) => setLogsAccount(examinee)}
                   onRestoreFromLog={(username) => setRestoreFromLogAccount(username)}
                   onReset={(examinee) => setResetTarget(examinee)}
                 />
@@ -348,6 +404,12 @@ const ChairmanExamineesPage = () => {
         account={detailAccount?.username}
         fullname={detailAccount?.fullname}
       />
+      <ExamineeLogsDialog
+        open={!!logsAccount}
+        onClose={() => setLogsAccount(null)}
+        account={logsAccount?.username}
+        fullname={logsAccount?.fullname}
+      />
       <RestoreFromLogDialog
         open={!!restoreFromLogAccount}
         onClose={() => setRestoreFromLogAccount(null)}
@@ -355,6 +417,12 @@ const ChairmanExamineesPage = () => {
         onDone={refreshAfterAction}
       />
       <ResetResultDialog open={!!resetTarget} onClose={() => setResetTarget(null)} examinee={resetTarget} onDone={refreshAfterAction} />
+      <TurnDataManagementDialog
+        open={dataManagementOpen}
+        onClose={() => setDataManagementOpen(false)}
+        turnCode={turnCode}
+        onChanged={refreshAfterAction}
+      />
     </MainCard>
   );
 };

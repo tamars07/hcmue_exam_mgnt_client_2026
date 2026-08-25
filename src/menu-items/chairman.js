@@ -23,6 +23,13 @@ const chairman = {
       icon: icons.PieChartOutlined
     },
     {
+      id: 'chairman-rooms',
+      title: <FormattedMessage id="chairman-rooms" defaultMessage="Quản lý ca thi" />,
+      type: 'item',
+      url: '/chairman/rooms',
+      icon: icons.ApartmentOutlined
+    },
+    {
       id: 'chairman-test-import',
       title: <FormattedMessage id="chairman-test-import" defaultMessage="Nhận đề thi" />,
       type: 'item',
@@ -30,15 +37,8 @@ const chairman = {
       icon: icons.ImportOutlined
     },
     {
-      id: 'chairman-rooms',
-      title: <FormattedMessage id="chairman-rooms" defaultMessage="Kích hoạt phòng thi" />,
-      type: 'item',
-      url: '/chairman/rooms',
-      icon: icons.ApartmentOutlined
-    },
-    {
       id: 'chairman-examinees',
-      title: <FormattedMessage id="chairman-examinees" defaultMessage="Giám sát kì thi" />,
+      title: <FormattedMessage id="chairman-examinees" defaultMessage="Giám sát ca thi" />,
       type: 'item',
       url: '/chairman/examinees',
       icon: icons.TeamOutlined

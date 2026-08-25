@@ -27,7 +27,8 @@ import {
   DeleteOutlined,
   ImportOutlined,
   InboxOutlined,
-  LoginOutlined
+  LoginOutlined,
+  ReloadOutlined
 } from '@ant-design/icons';
 
 // project import
@@ -39,6 +40,7 @@ import CreateDatabaseDialog from './CreateDatabaseDialog';
 import BackupHistoryDialog from './BackupHistoryDialog';
 import SqlImportDialog from './SqlImportDialog';
 import DeleteDatabaseDialog from './DeleteDatabaseDialog';
+import RestoreBackupDialog from './RestoreBackupDialog';
 
 // ==============================|| SUPER ADMIN - QUẢN LÝ DATABASE KỲ THI ||============================== //
 
@@ -52,6 +54,7 @@ const ExamDatabasesPage = () => {
   const [createOpen, setCreateOpen] = useState(false);
   const [backupTarget, setBackupTarget] = useState(null);
   const [importTarget, setImportTarget] = useState(null);
+  const [restoreTarget, setRestoreTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selectTarget, setSelectTarget] = useState(null);
   const [selecting, setSelecting] = useState(false);
@@ -179,6 +182,9 @@ const ExamDatabasesPage = () => {
                   <Button size="small" startIcon={<ImportOutlined />} onClick={() => setImportTarget(row)}>
                     Import theo bảng
                   </Button>
+                  <Button size="small" color="warning" startIcon={<ReloadOutlined />} onClick={() => setRestoreTarget(row)}>
+                    Phục hồi từ backup
+                  </Button>
                   <Button size="small" startIcon={<InboxOutlined />} onClick={() => handleArchiveToggle(row)}>
                     {row.status === 'archived' ? 'Bỏ lưu trữ' : 'Lưu trữ'}
                   </Button>
@@ -206,6 +212,13 @@ const ExamDatabasesPage = () => {
       <CreateDatabaseDialog open={createOpen} onClose={() => setCreateOpen(false)} allBackups={allBackups} onCreated={fetchRows} />
       <BackupHistoryDialog open={!!backupTarget} onClose={() => setBackupTarget(null)} examDatabase={backupTarget} onChanged={fetchRows} />
       <SqlImportDialog open={!!importTarget} onClose={() => setImportTarget(null)} examDatabase={importTarget} />
+      <RestoreBackupDialog
+        open={!!restoreTarget}
+        onClose={() => setRestoreTarget(null)}
+        examDatabase={restoreTarget}
+        allBackups={allBackups}
+        onRestored={fetchRows}
+      />
       <DeleteDatabaseDialog open={!!deleteTarget} onClose={() => setDeleteTarget(null)} examDatabase={deleteTarget} onDeleted={fetchRows} />
 
       <Dialog open={!!selectTarget} onClose={() => setSelectTarget(null)} fullWidth maxWidth="sm">

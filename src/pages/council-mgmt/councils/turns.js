@@ -32,11 +32,15 @@ import {
 } from '@mui/material';
 import {
   ArrowLeftOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
   DownOutlined,
   EditOutlined,
   FileExcelOutlined,
   FileWordOutlined,
   FileZipOutlined,
+  PauseCircleOutlined,
+  StopOutlined,
   TeamOutlined,
   ThunderboltOutlined
 } from '@ant-design/icons';
@@ -50,9 +54,16 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
-import { formatTurnLabel } from 'utils/council-schedule';
+import { formatTurnLabel, getTurnDataStatus } from 'utils/council-schedule';
 
 // ==============================|| COUNCIL TURNS - LIST ||============================== //
+
+const TURN_STATUS_ICONS = {
+  pending: <ClockCircleOutlined />,
+  not_exam_yet: <PauseCircleOutlined />,
+  running: <CheckCircleOutlined />,
+  ended: <StopOutlined />
+};
 
 const examStatusColor = (status) => {
   switch (status) {
@@ -322,6 +333,7 @@ const CouncilTurnsPage = () => {
         );
         const allSelected = details.length > 0 && selectedZipIds.length === details.length;
         const someSelected = selectedZipIds.length > 0 && !allSelected;
+        const dataStatus = getTurnDataStatus(turn);
         return (
           <Accordion key={turn.code} expanded={expandedTurnCode === turn.code} onChange={handleAccordionChange(turn.code)}>
             <AccordionSummary expandIcon={<DownOutlined />}>
@@ -331,6 +343,7 @@ const CouncilTurnsPage = () => {
                 </Typography>
                 <Chip label={`${turn.no_rooms} phòng`} size="small" />
                 <Chip label={turn.status ? 'Sử dụng' : 'Ẩn'} color={turn.status ? 'success' : 'default'} size="small" />
+                <Chip label={dataStatus.label} color={dataStatus.color} size="small" icon={TURN_STATUS_ICONS[dataStatus.key]} />
                 <Button
                   size="small"
                   variant="outlined"

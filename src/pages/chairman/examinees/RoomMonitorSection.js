@@ -44,6 +44,7 @@ const RoomMonitorSection = ({
   onDetail,
   onRestore,
   onAddTime,
+  onViewLogs,
   onRestoreFromLog,
   onReset
 }) => {
@@ -123,6 +124,7 @@ const RoomMonitorSection = ({
                   onDetail={onDetail}
                   onRestore={onRestore}
                   onAddTime={onAddTime}
+                  onViewLogs={onViewLogs}
                   onRestoreFromLog={onRestoreFromLog}
                   onReset={onReset}
                 />
@@ -146,6 +148,7 @@ RoomMonitorSection.propTypes = {
   onDetail: PropTypes.func.isRequired,
   onRestore: PropTypes.func.isRequired,
   onAddTime: PropTypes.func.isRequired,
+  onViewLogs: PropTypes.func.isRequired,
   onRestoreFromLog: PropTypes.func.isRequired,
   onReset: PropTypes.func.isRequired
 };

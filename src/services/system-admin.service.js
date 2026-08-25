@@ -18,6 +18,8 @@ const deleteExamDatabase = (id, confirmDbName) => axios.delete(`${BASE}/exam-dat
 
 // Backups
 const runBackup = (id) => axios.post(`${BASE}/exam-databases/${id}/backup`);
+const restoreBackup = (id, formData) =>
+  axios.post(`${BASE}/exam-databases/${id}/restore-backup`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 const getBackups = (id) => axios.get(`${BASE}/exam-databases/${id}/backups`);
 const downloadBackup = (id, backupId) =>
   axios.get(`${BASE}/exam-databases/${id}/backups/${backupId}/download`, { responseType: 'blob' });
@@ -39,6 +41,7 @@ const systemAdminService = {
   unarchiveExamDatabase,
   deleteExamDatabase,
   runBackup,
+  restoreBackup,
   getBackups,
   downloadBackup,
   deleteBackup,

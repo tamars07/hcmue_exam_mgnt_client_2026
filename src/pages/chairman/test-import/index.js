@@ -6,6 +6,10 @@ import {
   Box,
   Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   MenuItem,
   Stack,
@@ -31,31 +35,6 @@ import TestMixUploadDialog from './TestMixUploadDialog';
 
 // ==============================|| NHẬN ĐỀ THI ||============================== //
 
-const computeImportWindow = (council, turn) => {
-  if (!council || !turn?.start_at) return null;
-  const windowMinutes = council.import_testdata_before_time ?? 60;
-  const startAt = new Date(String(turn.start_at).replace(' ', 'T')).getTime();
-  const windowStart = startAt - windowMinutes * 60 * 1000;
-  const now = Date.now();
-
-  if (now < windowStart) {
-    return { status: 'too_early', windowMinutes, windowStart };
-  }
-  if (now >= startAt) {
-    return { status: 'started' };
-  }
-  return { status: 'open' };
-};
-
-const formatDateTime = (ms) =>
-  new Date(ms).toLocaleString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-
 const TestImportPage = () => {
   const { withLoading } = useLoadingOverlay();
 
@@ -67,6 +46,8 @@ const TestImportPage = () => {
   const [importedList, setImportedList] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [revokeTarget, setRevokeTarget] = useState(null);
+  const [revoking, setRevoking] = useState(false);
 
   useEffect(() => {
     chairmanService
@@ -107,10 +88,10 @@ const TestImportPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [turnCode]);
 
-  const selectedCouncil = councils.find((c) => c.code === councilCode);
   const selectedTurn = turns.find((t) => t.code === turnCode);
-  const importWindow = useMemo(() => computeImportWindow(selectedCouncil, selectedTurn), [selectedCouncil, selectedTurn]);
-  const canImport = importWindow?.status === 'open';
+  const turnStarted = !!selectedTurn?.started_at && !selectedTurn?.ended_at;
+  const turnEnded = !!selectedTurn?.ended_at;
+  const canImport = turnStarted;
 
   const batches = useMemo(() => {
     const grouped = new Map();
@@ -124,17 +105,21 @@ const TestImportPage = () => {
     return Array.from(grouped.values());
   }, [importedList]);
 
-  const handleRevoke = async (batch) => {
-    if (!window.confirm(`Thu hồi toàn bộ ${batch.rows.length} đề trong gói ${batch.test_group_code} khỏi ca thi này?`)) return;
+  const confirmRevoke = async () => {
+    if (!revokeTarget) return;
+    setRevoking(true);
     try {
       await withLoading(
-        () => chairmanService.revokeTestMixBatch(turnCode, batch.test_group_id),
+        () => chairmanService.revokeTestMixBatch(turnCode, revokeTarget.test_group_id),
         'Đang thu hồi gói đề...'
       );
       openSnackbar({ open: true, message: 'Đã thu hồi gói đề', variant: 'alert', alert: { color: 'success' } });
+      setRevokeTarget(null);
       fetchImportedList();
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Thu hồi thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setRevoking(false);
     }
   };
 
@@ -192,14 +177,9 @@ const TestImportPage = () => {
           </Typography>
         ) : (
           <>
-            {importWindow?.status === 'too_early' && (
-              <Alert severity="warning">
-                Chưa đến thời điểm nhận đề thi cho ca thi này — mở lúc <strong>{formatDateTime(importWindow.windowStart)}</strong> (trước
-                giờ thi {importWindow.windowMinutes} phút).
-              </Alert>
-            )}
-            {importWindow?.status === 'started' && (
-              <Alert severity="error">Ca thi đã đến giờ hoặc đã diễn ra, không thể nhận đề thi nữa.</Alert>
+            {turnEnded && <Alert severity="error">Ca thi đã kết thúc, không thể nhận đề thi nữa.</Alert>}
+            {!turnEnded && !turnStarted && (
+              <Alert severity="warning">Cần bấm &quot;Bắt đầu&quot; ca thi (ở trang Quản lý ca thi) trước khi nhận đề thi.</Alert>
             )}
 
             {canImport && (
@@ -231,7 +211,7 @@ const TestImportPage = () => {
                         />
                         <Tooltip title={anyUsed ? 'Đã có đề được sử dụng, không thể thu hồi cả gói' : 'Thu hồi toàn bộ gói đề khỏi ca thi'}>
                           <span>
-                            <Button size="small" color="error" variant="outlined" disabled={anyUsed} onClick={() => handleRevoke(batch)}>
+                            <Button size="small" color="error" variant="outlined" disabled={anyUsed} onClick={() => setRevokeTarget(batch)}>
                               Thu hồi gói đề
                             </Button>
                           </span>
@@ -297,6 +277,22 @@ const TestImportPage = () => {
         turnLabel={selectedTurn ? formatTurnLabel(selectedTurn) : ''}
         onImported={fetchImportedList}
       />
+
+      <Dialog open={!!revokeTarget} onClose={() => setRevokeTarget(null)} fullWidth maxWidth="xs">
+        <DialogTitle>Xác nhận thu hồi gói đề</DialogTitle>
+        <DialogContent>
+          <Alert severity="error" sx={{ mt: 1 }}>
+            Thu hồi toàn bộ <strong>{revokeTarget?.rows.length}</strong> đề trong gói <strong>{revokeTarget?.test_group_code}</strong> khỏi
+            ca thi này? Chỉ gỡ liên kết với ca thi, không xoá dữ liệu đề gốc — có thể nhận lại sau nếu cần.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRevokeTarget(null)}>Huỷ</Button>
+          <Button color="error" variant="contained" disabled={revoking} onClick={confirmRevoke}>
+            {revoking ? 'Đang thu hồi...' : 'Xác nhận thu hồi'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </MainCard>
   );
 };

@@ -101,10 +101,12 @@ const SqlImportDialog = ({ open, onClose, examDatabase }) => {
       <DialogContent dividers>
         {step === 'select' && (
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <Alert severity="warning">
-              Chỉ các bảng dữ liệu nghiệp vụ kỳ thi (địa điểm thi, phòng thi, hội đồng, câu hỏi, thí sinh...) mới được phép import. Các
-              bảng tài khoản/hệ thống (users, roles, monitors...) sẽ luôn bị loại trừ dù có trong file. Việc import chọn lọc theo bảng có
-              thể phá vỡ ràng buộc khoá ngoại nếu chọn thiếu bảng liên quan — vui lòng tự kiểm tra tính nhất quán trước khi xác nhận.
+            <Alert severity="error">
+              Với mỗi bảng được chọn, hệ thống sẽ <strong>xoá sạch (TRUNCATE) toàn bộ dữ liệu hiện có</strong> của bảng đó rồi mới nạp dữ
+              liệu mới từ file vào — không thể hoàn tác. Ràng buộc khoá ngoại sẽ được bỏ qua trong lúc import, nên hãy chọn đầy đủ các
+              bảng liên quan để tránh dữ liệu mất nhất quán. Chỉ các bảng dữ liệu nghiệp vụ kỳ thi (địa điểm thi, phòng thi, hội đồng, câu
+              hỏi, thí sinh...) mới được phép import — các bảng tài khoản/hệ thống (users, roles, monitors...) sẽ luôn bị loại trừ dù có
+              trong file.
             </Alert>
             <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
               {file ? file.name : 'Chọn file .sql hoặc .sql.gz'}
@@ -146,6 +148,10 @@ const SqlImportDialog = ({ open, onClose, examDatabase }) => {
                 </TableBody>
               </Table>
             ) : (
+              <>
+              <Alert severity="warning">
+                Các bảng được tick chọn bên dưới sẽ bị xoá sạch dữ liệu hiện có trước khi nạp dữ liệu mới từ file.
+              </Alert>
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -182,6 +188,7 @@ const SqlImportDialog = ({ open, onClose, examDatabase }) => {
                   ))}
                 </TableBody>
               </Table>
+              </>
             )}
           </Stack>
         )}
