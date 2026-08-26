@@ -27,14 +27,14 @@ const RestoreFromLogDialog = ({ open, onClose, account, onDone }) => {
   const [restorePoints, setRestorePoints] = useState([]);
   const [loading, setLoading] = useState(false);
   const [sourceType, setSourceType] = useState('current');
-  const [activityLogId, setActivityLogId] = useState('');
+  const [upToLogTime, setUpToLogTime] = useState('');
   const [questionId, setQuestionId] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!open || !account) return;
     setSourceType('current');
-    setActivityLogId('');
+    setUpToLogTime('');
     setQuestionId('');
     setMessage('');
     setLoading(true);
@@ -50,8 +50,8 @@ const RestoreFromLogDialog = ({ open, onClose, account, onDone }) => {
       openSnackbar({ open: true, message: 'Vui lòng nhập lý do khôi phục', variant: 'alert', alert: { color: 'warning' } });
       return;
     }
-    if (sourceType === 'log' && !activityLogId) {
-      openSnackbar({ open: true, message: 'Vui lòng chọn mốc nhật ký', variant: 'alert', alert: { color: 'warning' } });
+    if (sourceType === 'timestamp' && !upToLogTime) {
+      openSnackbar({ open: true, message: 'Vui lòng chọn mốc thời điểm', variant: 'alert', alert: { color: 'warning' } });
       return;
     }
     try {
@@ -59,7 +59,7 @@ const RestoreFromLogDialog = ({ open, onClose, account, onDone }) => {
         () =>
           chairmanService.restoreAnswersFromLog(account, {
             source_type: sourceType,
-            activity_log_id: sourceType === 'log' ? activityLogId : undefined,
+            up_to_log_time: sourceType === 'timestamp' ? upToLogTime : undefined,
             question_id: questionId ? parseInt(questionId, 10) : undefined,
             message
           }),
@@ -83,21 +83,25 @@ const RestoreFromLogDialog = ({ open, onClose, account, onDone }) => {
           </Alert>
           <TextField fullWidth select label="Nguồn dữ liệu" value={sourceType} onChange={(e) => setSourceType(e.target.value)}>
             <MenuItem value="current">Bản đồng bộ gần nhất (answer_logs hiện tại)</MenuItem>
-            <MenuItem value="log">Chọn 1 mốc nhật ký cụ thể</MenuItem>
+            <MenuItem value="timestamp">Khôi phục đến 1 thời điểm cụ thể</MenuItem>
           </TextField>
-          {sourceType === 'log' && (
+          {sourceType === 'timestamp' && (
             <TextField
               fullWidth
               select
-              label="Mốc nhật ký"
-              value={activityLogId}
-              onChange={(e) => setActivityLogId(e.target.value)}
+              label="Thời điểm khôi phục"
+              value={upToLogTime}
+              onChange={(e) => setUpToLogTime(e.target.value)}
               disabled={loading}
-              helperText={!loading && restorePoints.length === 0 ? 'Chưa có mốc nhật ký nào cho thí sinh này' : ''}
+              helperText={
+                !loading && restorePoints.length === 0
+                  ? 'Chưa có lịch sử trả lời nào cho thí sinh này'
+                  : 'Khôi phục về đúng trạng thái câu trả lời tính đến thời điểm được chọn'
+              }
             >
               {restorePoints.map((p) => (
-                <MenuItem key={p.activity_log_id} value={p.activity_log_id}>
-                  {p.log_time} — {p.question_count} câu
+                <MenuItem key={p.id} value={p.log_time}>
+                  {p.log_time_label} — Câu {p.question_number}: {p.answer_detail || '(để trống)'}
                 </MenuItem>
               ))}
             </TextField>

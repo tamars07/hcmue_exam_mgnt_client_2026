@@ -14,21 +14,25 @@ const createExamDatabase = (formData) =>
 const selectExamDatabase = (id) => axios.put(`${BASE}/exam-databases/${id}/select`);
 const archiveExamDatabase = (id) => axios.put(`${BASE}/exam-databases/${id}/archive`);
 const unarchiveExamDatabase = (id) => axios.put(`${BASE}/exam-databases/${id}/unarchive`);
-const deleteExamDatabase = (id, confirmDbName) => axios.delete(`${BASE}/exam-databases/${id}`, { data: { confirm_db_name: confirmDbName } });
+const deleteExamDatabase = (id, confirmDbName) =>
+  axios.delete(`${BASE}/exam-databases/${id}`, { data: { confirm_db_name: confirmDbName } });
 
 // Backups
 const runBackup = (id) => axios.post(`${BASE}/exam-databases/${id}/backup`);
 const restoreBackup = (id, formData) =>
   axios.post(`${BASE}/exam-databases/${id}/restore-backup`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 const getBackups = (id) => axios.get(`${BASE}/exam-databases/${id}/backups`);
-const downloadBackup = (id, backupId) =>
-  axios.get(`${BASE}/exam-databases/${id}/backups/${backupId}/download`, { responseType: 'blob' });
+const downloadBackup = (id, backupId) => axios.get(`${BASE}/exam-databases/${id}/backups/${backupId}/download`, { responseType: 'blob' });
 const deleteBackup = (id, backupId) => axios.delete(`${BASE}/exam-databases/${id}/backups/${backupId}`);
 
 // SQL table import
 const previewSqlImport = (id, formData) =>
   axios.post(`${BASE}/exam-databases/${id}/sql-import/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 const commitSqlImport = (id, payload) => axios.post(`${BASE}/exam-databases/${id}/sql-import/commit`, payload);
+
+// Nhật ký thao tác Super Admin
+const getActivityLogs = (params) => axios.get(`${BASE}/activity-logs`, { params });
+const getActivityLogActions = () => axios.get(`${BASE}/activity-logs/actions`);
 
 const systemAdminService = {
   login,
@@ -46,7 +50,9 @@ const systemAdminService = {
   downloadBackup,
   deleteBackup,
   previewSqlImport,
-  commitSqlImport
+  commitSqlImport,
+  getActivityLogs,
+  getActivityLogActions
 };
 
 export default systemAdminService;

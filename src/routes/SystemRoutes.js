@@ -8,6 +8,8 @@ import SuperAdminGuestGuard from 'utils/route-guard/SuperAdminGuestGuard';
 
 const SystemLogin = Loadable(lazy(() => import('pages/system/login')));
 const ExamDatabasesPage = Loadable(lazy(() => import('pages/system/exam-databases')));
+const ExamConfigPage = Loadable(lazy(() => import('pages/system/exam-config')));
+const SystemActivityLogsPage = Loadable(lazy(() => import('pages/system/activity-logs')));
 
 // ==============================|| SUPER ADMIN ROUTING ||============================== //
 // Không tái dùng AuthLayout/GuestGuard hiện có — GuestGuard đọc trạng thái đăng nhập council-mgmt
@@ -35,6 +37,14 @@ const SystemRoutes = {
         {
           path: 'exam-databases',
           element: <ExamDatabasesPage />
+        },
+        {
+          path: 'exam-config',
+          element: <ExamConfigPage />
+        },
+        {
+          path: 'activity-logs',
+          element: <SystemActivityLogsPage />
         }
       ]
     }

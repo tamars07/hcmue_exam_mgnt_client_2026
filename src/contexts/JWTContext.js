@@ -184,8 +184,14 @@ export const JWTProvider = ({ children }) => {
 
   const logout = () => {
     // Ghi lại thời điểm đăng xuất ở server (ActivityLog {ROLE}_LOGOUT) — không chặn luồng đăng xuất
-    // nếu request lỗi, vì local state luôn phải được xoá dù server có phản hồi hay không.
-    axios.post('/api/auth/logout').catch(() => {});
+    // nếu request lỗi, vì local state luôn phải được xoá dù server có phản hồi hay không. Phải tự
+    // chỉ định header Authorization tường minh (không dựa vào interceptor đọc localStorage) vì
+    // request được gửi bất đồng bộ — đến lúc interceptor thực sự đọc thì serviceToken đã bị
+    // setSession(null)/localStorage.clear() xoá mất, khiến request đi mà không có token.
+    const serviceToken = localStorage.getItem('serviceToken');
+    if (serviceToken) {
+      axios.post('/api/auth/logout', {}, { headers: { Authorization: `Bearer ${serviceToken}` } }).catch(() => {});
+    }
     setSession(null);
     // localStorage.removeItem('remainingTime');
     // localStorage.removeItem('testdata');

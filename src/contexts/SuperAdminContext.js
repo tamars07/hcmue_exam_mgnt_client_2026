@@ -83,6 +83,13 @@ export const SuperAdminProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Ghi lại thời điểm đăng xuất (system_activity_logs) trước khi xoá phiên — phải tự chỉ định
+    // header Authorization tường minh vì request được gửi bất đồng bộ, đến lúc interceptor đọc thì
+    // superAdminToken có thể đã bị setSession(null) xoá mất.
+    const serviceToken = localStorage.getItem('superAdminToken');
+    if (serviceToken) {
+      axios.post('api/system/auth/logout', {}, { headers: { Authorization: `Bearer ${serviceToken}` } }).catch(() => {});
+    }
     setSession(null);
     dispatch({ type: LOGOUT });
   };

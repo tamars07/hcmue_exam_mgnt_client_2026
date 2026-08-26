@@ -20,7 +20,7 @@ const LogoMain = ({ reverse }) => (
         whiteSpace: 'normal'
       }}
     >
-      Hệ thống Tổ chức thi HCMUE
+      HCMUE - EMS
     </Typography>
   </Stack>
 );

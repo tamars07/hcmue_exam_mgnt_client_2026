@@ -2,10 +2,10 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined, IdcardOutlined } from '@ant-design/icons';
+import { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined, IdcardOutlined, FileSearchOutlined } from '@ant-design/icons';
 
 // icons
-const icons = { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined, IdcardOutlined };
+const icons = { BankOutlined, HomeOutlined, ApartmentOutlined, TeamOutlined, IdcardOutlined, FileSearchOutlined };
 
 // ==============================|| MENU ITEMS - COUNCIL MANAGEMENT ||============================== //
 
@@ -49,6 +49,13 @@ const councilMgmt = {
       type: 'item',
       url: '/council-mgmt/monitors',
       icon: icons.IdcardOutlined
+    },
+    {
+      id: 'activity-logs',
+      title: <FormattedMessage id="activity-logs" defaultMessage="Nhật ký hệ thống" />,
+      type: 'item',
+      url: '/council-mgmt/logs',
+      icon: icons.FileSearchOutlined
     }
   ]
 };

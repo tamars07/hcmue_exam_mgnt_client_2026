@@ -118,7 +118,7 @@ const ExamineeLogsDialog = ({ open, onClose, account, fullname }) => {
                           <TableCell sx={{ maxWidth: 320, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                             {row.answer_detail || <em>(để trống)</em>}
                           </TableCell>
-                          <TableCell>{row.log_time}</TableCell>
+                          <TableCell>{row.log_time_label}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

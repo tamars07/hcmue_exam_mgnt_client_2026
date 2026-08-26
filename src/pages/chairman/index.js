@@ -30,7 +30,8 @@ import {
   PoweroffOutlined,
   ReloadOutlined,
   StopOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  UndoOutlined
 } from '@ant-design/icons';
 
 // project import
@@ -51,20 +52,30 @@ const TURN_STATUS_ICONS = {
 
 const LIFECYCLE_TITLES = {
   start: 'Xác nhận Bắt đầu ca thi',
+  cancel_start: 'Xác nhận Huỷ bắt đầu ca thi',
   end: 'Xác nhận Kết thúc ca thi',
   resume: 'Xác nhận Mở lại ca thi'
 };
 
 const LIFECYCLE_LOADING_MESSAGES = {
   start: 'Đang bắt đầu ca thi... Vui lòng chờ',
+  cancel_start: 'Đang huỷ trạng thái bắt đầu... Vui lòng chờ',
   end: 'Đang kết thúc ca thi... Vui lòng chờ',
   resume: 'Đang mở lại ca thi... Vui lòng chờ'
 };
 
 const LIFECYCLE_SUCCESS_MESSAGES = {
   start: 'Đã bắt đầu ca thi',
+  cancel_start: 'Đã huỷ trạng thái bắt đầu ca thi',
   end: 'Đã kết thúc ca thi',
   resume: 'Đã mở lại ca thi'
+};
+
+const LIFECYCLE_ACTION_FNS = {
+  start: (turnCode, message, enforceDayOrder) => chairmanService.startTurnData(turnCode, message, enforceDayOrder),
+  cancel_start: (turnCode, message) => chairmanService.cancelStartTurnData(turnCode, message),
+  end: (turnCode, message) => chairmanService.endTurnData(turnCode, message),
+  resume: (turnCode, message) => chairmanService.resumeTurnData(turnCode, message)
 };
 
 // Đảm bảo hiệu ứng chờ hiện tối thiểu 3 giây sau khi bấm Kích hoạt/Huỷ kích hoạt, kể cả khi API
@@ -90,6 +101,9 @@ const ChairmanRoomsPage = () => {
   const [councilCode, setCouncilCode] = useState('');
   const [turns, setTurns] = useState([]);
   const [turnStatusByCode, setTurnStatusByCode] = useState({});
+  // Ràng buộc các ca thi trong cùng 1 ngày phải được bắt đầu theo đúng thứ tự trước-sau — mặc định
+  // bật, điểm trưởng tự tắt khi có nhu cầu bắt đầu 1 ca bất kỳ trong ngày (vd ca thi đột xuất).
+  const [enforceDayOrder, setEnforceDayOrder] = useState(true);
 
   const [expandedTurnCode, setExpandedTurnCode] = useState(false);
   const [roomsByTurn, setRoomsByTurn] = useState({});
@@ -165,12 +179,15 @@ const ChairmanRoomsPage = () => {
     setLoadingTurn(true);
     try {
       const res = await chairmanService.getCouncilTurnDetails(turnCode);
-      const sorted = [...res.data.data].sort((a, b) =>
-        (a.room?.name || '').localeCompare(b.room?.name || '', 'vi', { numeric: true })
-      );
+      const sorted = [...res.data.data].sort((a, b) => (a.room?.name || '').localeCompare(b.room?.name || '', 'vi', { numeric: true }));
       setRoomsByTurn((prev) => ({ ...prev, [turnCode]: sorted }));
     } catch (e) {
-      openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách phòng thi', variant: 'alert', alert: { color: 'error' } });
+      openSnackbar({
+        open: true,
+        message: e?.message || 'Không tải được danh sách phòng thi',
+        variant: 'alert',
+        alert: { color: 'error' }
+      });
     } finally {
       setLoadingTurn(false);
     }
@@ -240,12 +257,13 @@ const ChairmanRoomsPage = () => {
   const confirmLifecycle = async () => {
     if (!lifecycleDialog) return;
     const { turnCode, action } = lifecycleDialog;
-    const fn =
-      action === 'start' ? chairmanService.startTurnData : action === 'end' ? chairmanService.endTurnData : chairmanService.resumeTurnData;
 
     setLifecycleBusy(true);
     try {
-      await withLoading(() => fn(turnCode, lifecycleMessage), LIFECYCLE_LOADING_MESSAGES[action]);
+      await withLoading(
+        () => LIFECYCLE_ACTION_FNS[action](turnCode, lifecycleMessage, enforceDayOrder),
+        LIFECYCLE_LOADING_MESSAGES[action]
+      );
       openSnackbar({ open: true, message: LIFECYCLE_SUCCESS_MESSAGES[action], variant: 'alert', alert: { color: 'success' } });
       setLifecycleDialog(null);
       refreshTurns();
@@ -275,6 +293,14 @@ const ChairmanRoomsPage = () => {
           ))}
         </TextField>
 
+        {councilCode && turns.length > 1 && (
+          <FormControlLabel
+            sx={{ ml: 0 }}
+            control={<Checkbox checked={enforceDayOrder} onChange={(e) => setEnforceDayOrder(e.target.checked)} />}
+            label="Bắt đầu theo thứ tự trong ngày"
+          />
+        )}
+
         {!councilCode && (
           <Typography align="center" color="text.secondary" sx={{ py: 4 }}>
             Chọn hội đồng thi để xem danh sách ca thi và phòng thi.
@@ -299,26 +325,35 @@ const ChairmanRoomsPage = () => {
           // kích hoạt phòng ĐẦU TIÊN của ca thi. Ràng buộc thật sự chỉ cần ca thi đã bắt đầu.
           const canActivateRoom = !!turn.started_at && !turn.ended_at;
 
-          const startTooltip =
-            !lifecycle || lifecycle.can_start
+          // Day-order (blocking_earlier_turn_today) không được server tính vào can_start vì nó phụ
+          // thuộc checkbox "Bắt đầu theo thứ tự trong ngày" ở giao diện, không phải 1 sự thật cố định
+          // — chỉ enforce ở đây khi checkbox đang bật.
+          const dayOrderBlocked = enforceDayOrder && !!lifecycle?.blocking_earlier_turn_today;
+          const startTooltip = dayOrderBlocked
+            ? `Cần bắt đầu ca thi "${lifecycle.blocking_earlier_turn_today}" trước (diễn ra sớm hơn trong ngày hôm nay) — tắt "Bắt đầu theo thứ tự trong ngày" nếu muốn bắt đầu ca này trước`
+            : !lifecycle || lifecycle.can_start
               ? ''
-              : !lifecycle.start_window_open
-              ? `Chưa đến thời điểm được phép bắt đầu ca thi — mở lúc ${lifecycle.start_window_at}`
-              : lifecycle.blocking_started_turn
-              ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
-              : lifecycle.blocking_uncleaned_turn
-              ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
-              : '';
+              : !lifecycle.is_turn_today
+                ? 'Ca thi này không diễn ra hôm nay, không thể bắt đầu'
+                : !lifecycle.start_window_open
+                  ? `Chưa đến thời điểm được phép bắt đầu ca thi — mở lúc ${lifecycle.start_window_at}`
+                  : lifecycle.blocking_started_turn
+                    ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
+                    : lifecycle.blocking_uncleaned_turn
+                      ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
+                      : '';
           const resumeTooltip =
             !lifecycle || lifecycle.can_resume
               ? ''
               : lifecycle.is_cleaned
-              ? 'Dữ liệu ca thi này đã được dọn dẹp, không thể mở lại'
-              : lifecycle.blocking_started_turn
-              ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
-              : lifecycle.blocking_uncleaned_turn
-              ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
-              : '';
+                ? 'Dữ liệu ca thi này đã được dọn dẹp, không thể mở lại'
+                : lifecycle.blocking_started_turn
+                  ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
+                  : lifecycle.blocking_uncleaned_turn
+                    ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
+                    : '';
+          const cancelStartTooltip =
+            !lifecycle || lifecycle.can_cancel_start ? '' : 'Ca thi này đã nhận đề thi, không thể huỷ trạng thái bắt đầu';
 
           return (
             <Accordion key={turn.code} expanded={expandedTurnCode === turn.code} onChange={handleAccordionChange(turn.code)}>
@@ -348,7 +383,7 @@ const ChairmanRoomsPage = () => {
                             variant="contained"
                             color="success"
                             startIcon={<CaretRightOutlined />}
-                            disabled={!lifecycle || !lifecycle.can_start}
+                            disabled={!lifecycle || !lifecycle.can_start || dayOrderBlocked}
                             onClick={(e) => {
                               e.stopPropagation();
                               openLifecycle(turn.code, 'start');
@@ -359,7 +394,26 @@ const ChairmanRoomsPage = () => {
                         </span>
                       </Tooltip>
                     )}
-                    {dataStatus.key === 'running' && (
+                    {dataStatus.key === 'not_exam_yet' && (
+                      <Tooltip title={cancelStartTooltip}>
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="warning"
+                            startIcon={<UndoOutlined />}
+                            disabled={!lifecycle || !lifecycle.can_cancel_start}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openLifecycle(turn.code, 'cancel_start');
+                            }}
+                          >
+                            Huỷ bắt đầu
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    )}
+                    {(dataStatus.key === 'running' || dataStatus.key === 'not_exam_yet') && (
                       <Button
                         size="small"
                         variant="contained"
@@ -412,9 +466,7 @@ const ChairmanRoomsPage = () => {
                             checked={allSelected}
                             indeterminate={someSelected}
                             disabled={!turnIsToday}
-                            onChange={(e) =>
-                              setSelectedRoomIds(e.target.checked ? rooms.map((r) => r.council_turn_room_id) : [])
-                            }
+                            onChange={(e) => setSelectedRoomIds(e.target.checked ? rooms.map((r) => r.council_turn_room_id) : [])}
                           />
                         }
                         label="Chọn tất cả"
@@ -500,9 +552,7 @@ const ChairmanRoomsPage = () => {
       </Stack>
 
       <Dialog open={!!confirmDialog} onClose={() => setConfirmDialog(null)} fullWidth maxWidth="xs">
-        <DialogTitle>
-          Xác nhận {confirmDialog?.action === 'activate' ? 'kích hoạt' : 'huỷ kích hoạt'} phòng thi
-        </DialogTitle>
+        <DialogTitle>Xác nhận {confirmDialog?.action === 'activate' ? 'kích hoạt' : 'huỷ kích hoạt'} phòng thi</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Alert severity={confirmDialog?.action === 'activate' ? 'warning' : 'info'}>
@@ -534,8 +584,14 @@ const ChairmanRoomsPage = () => {
           <Stack spacing={2} sx={{ mt: 1 }}>
             {lifecycleDialog?.action === 'start' && (
               <Alert severity="warning">
-                Đánh dấu ca thi <strong>{lifecycleDialog.turnCode}</strong> đang chiếm dụng hạ tầng đề thi dùng chung. Chỉ 1 ca thi được
-                bắt đầu tại 1 thời điểm trên toàn hệ thống.
+                Cho phép ca thi <strong>{lifecycleDialog.turnCode}</strong> bắt đầu. Lưu ý: Chỉ 1 ca thi được bắt đầu tại 1 thời điểm trong
+                Hội đồng thi.
+              </Alert>
+            )}
+            {lifecycleDialog?.action === 'cancel_start' && (
+              <Alert severity="warning">
+                Đưa ca thi <strong>{lifecycleDialog.turnCode}</strong> về lại trạng thái &quot;Chưa bắt đầu&quot;, như thể chưa từng bấm Bắt
+                đầu. Chỉ dùng khi bấm nhầm — ca thi khác sẽ được phép bắt đầu ngay sau đó nếu cần.
               </Alert>
             )}
             {lifecycleDialog?.action === 'end' && (
@@ -565,7 +621,15 @@ const ChairmanRoomsPage = () => {
           <Button onClick={() => setLifecycleDialog(null)}>Huỷ</Button>
           <Button
             variant="contained"
-            color={lifecycleDialog?.action === 'end' ? 'error' : lifecycleDialog?.action === 'resume' ? 'info' : 'success'}
+            color={
+              lifecycleDialog?.action === 'end'
+                ? 'error'
+                : lifecycleDialog?.action === 'resume'
+                  ? 'info'
+                  : lifecycleDialog?.action === 'cancel_start'
+                    ? 'warning'
+                    : 'success'
+            }
             disabled={lifecycleBusy}
             onClick={confirmLifecycle}
           >

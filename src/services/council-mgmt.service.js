@@ -68,6 +68,10 @@ const createMonitor = (data) => axios.post(`${BASE}/monitors`, data);
 const updateMonitor = (id, data) => axios.put(`${BASE}/monitors/${id}`, data);
 const deleteMonitor = (id) => axios.delete(`${BASE}/monitors/${id}`);
 
+// Nhật ký hệ thống (mọi vai trò, trong phạm vi DB kỳ thi đang active)
+const getActivityLogs = (params) => axios.get(`${BASE}/logs`, { params: toListParams(params) });
+const getActivityLogActions = () => axios.get(`${BASE}/logs/actions`);
+
 const councilMgmtService = {
   getOrganizations,
   createOrganization,
@@ -99,7 +103,9 @@ const councilMgmtService = {
   getMonitors,
   createMonitor,
   updateMonitor,
-  deleteMonitor
+  deleteMonitor,
+  getActivityLogs,
+  getActivityLogActions
 };
 
 export default councilMgmtService;

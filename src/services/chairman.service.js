@@ -28,7 +28,8 @@ const getMonitorActivityLogs = (councilTurnCode, roomCode) =>
 const getExamineeActivityLogs = (examineeAccount) =>
   axios.get(`${BASE}/logs/examinee-activity`, { params: { examinee_account: examineeAccount } });
 // Tìm thí sinh theo tài khoản/CCCD-MSSV/họ lót/tên khi không nhớ ca thi/phòng thi
-const searchExaminees = (councilCode, search) => axios.get(`${BASE}/logs/examinees/search`, { params: { council_code: councilCode, search } });
+const searchExaminees = (councilCode, search) =>
+  axios.get(`${BASE}/logs/examinees/search`, { params: { council_code: councilCode, search } });
 
 // Tổng quan / thống kê thí sinh theo hội đồng thi (lọc thêm được theo ca thi/phòng thi). Khi không
 // chọn phòng cụ thể, onlyActiveRooms cho phép chỉ tính trên các phòng đã kích hoạt.
@@ -56,7 +57,9 @@ const unlockTestMix = (id) => axios.put(`${BASE}/test-mixes/${id}/unlock`);
 
 // Quản lý dữ liệu ca thi: Bắt đầu/Kết thúc, Sao lưu Dữ liệu bài thi, Dọn dẹp dữ liệu
 const getTurnDataStatus = (turnCode) => axios.get(`${BASE}/council-turns/${turnCode}/data-status`);
-const startTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-start`, { message });
+const startTurnData = (turnCode, message, enforceDayOrder) =>
+  axios.post(`${BASE}/council-turns/${turnCode}/data-start`, { message, enforce_day_order: enforceDayOrder });
+const cancelStartTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-cancel-start`, { message });
 const endTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-end`, { message });
 const resumeTurnData = (turnCode, message) => axios.post(`${BASE}/council-turns/${turnCode}/data-resume`, { message });
 const backupTurnData = (turnCode, message) =>
@@ -103,6 +106,7 @@ const chairmanService = {
   unlockTestMix,
   getTurnDataStatus,
   startTurnData,
+  cancelStartTurnData,
   endTurnData,
   resumeTurnData,
   backupTurnData,

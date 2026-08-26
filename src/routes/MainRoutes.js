@@ -22,6 +22,7 @@ const CouncilsPage = Loadable(lazy(() => import('pages/council-mgmt/councils')))
 const CouncilTurnsPage = Loadable(lazy(() => import('pages/council-mgmt/councils/turns')));
 const ExamineesPage = Loadable(lazy(() => import('pages/council-mgmt/examinees')));
 const MonitorsPage = Loadable(lazy(() => import('pages/council-mgmt/monitors')));
+const ActivityLogsPage = Loadable(lazy(() => import('pages/council-mgmt/logs')));
 
 // render - chairman (điểm trưởng)
 const ChairmanDashboardPage = Loadable(lazy(() => import('pages/chairman/dashboard')));
@@ -62,6 +63,10 @@ const MainRoutes = {
         {
           path: 'council-mgmt/monitors',
           element: <MonitorsPage />
+        },
+        {
+          path: 'council-mgmt/logs',
+          element: <ActivityLogsPage />
         },
         {
           path: 'chairman/dashboard',
