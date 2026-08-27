@@ -5,7 +5,7 @@ import { Box } from '@mui/material';
 
 // project import
 import NavGroup from 'layout/Dashboard/Drawer/DrawerContent/Navigation/NavGroup';
-import systemMenu from 'menu-items/system';
+import systemMenuItems from 'menu-items/system';
 
 // ==============================|| SYSTEM (SUPER ADMIN) - DRAWER NAVIGATION ||============================== //
 // Tái dùng NavGroup/NavItem của khu vực council-mgmt (thuần hiển thị, không phụ thuộc JWTContext) —
@@ -17,14 +17,17 @@ const SystemNavigation = () => {
 
   return (
     <Box sx={{ pt: 2 }}>
-      <NavGroup
-        item={systemMenu}
-        remItems={[]}
-        setSelectedItems={setSelectedItems}
-        setSelectedLevel={setSelectedLevel}
-        selectedLevel={selectedLevel}
-        selectedItems={selectedItems}
-      />
+      {systemMenuItems.items.map((item) => (
+        <NavGroup
+          key={item.id}
+          item={item}
+          remItems={[]}
+          setSelectedItems={setSelectedItems}
+          setSelectedLevel={setSelectedLevel}
+          selectedLevel={selectedLevel}
+          selectedItems={selectedItems}
+        />
+      ))}
     </Box>
   );
 };

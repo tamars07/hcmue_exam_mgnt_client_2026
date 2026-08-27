@@ -13,6 +13,22 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import ImportExamineeDialog from './ImportExamineeDialog';
 import { formatTurnLabel } from 'utils/council-schedule';
 
+// Cùng bảng màu với thẻ thí sinh ở "Giám sát ca thi" (pages/chairman/examinees/ExamineeCard.js) —
+// để 1 trạng thái luôn hiện đúng 1 màu dù xem ở đâu.
+const EXAM_STATUS_BG = {
+  'CHƯA ĐĂNG NHẬP': '#ecf0f5',
+  'CHỜ THI': 'rgba(255,78,0,.19)',
+  'ĐANG THI': 'rgba(0,128,0,.19)',
+  'ĐÃ NỘP BÀI': 'rgba(0,0,255,.19)'
+};
+
+const EXAM_STATUS_TEXT = {
+  'CHƯA ĐĂNG NHẬP': '#616161',
+  'CHỜ THI': 'rgba(255,78,0,.91)',
+  'ĐANG THI': 'rgba(0,128,0,.91)',
+  'ĐÃ NỘP BÀI': 'rgba(0,0,255,.91)'
+};
+
 // ==============================|| EXAMINEES - LIST ||============================== //
 
 const ExamineesPage = () => {
@@ -131,6 +147,22 @@ const ExamineesPage = () => {
     { field: 'firstname', headerName: 'Tên', width: 100 },
     { field: 'subject', headerName: 'Môn thi', width: 140 },
     { field: 'username', headerName: 'Tài khoản', width: 160 },
+    {
+      field: 'exam_status',
+      headerName: 'Trạng thái',
+      width: 150,
+      renderCell: (params) => (
+        <Chip
+          label={params.value}
+          size="small"
+          sx={{
+            bgcolor: EXAM_STATUS_BG[params.value] || '#ecf0f5',
+            color: EXAM_STATUS_TEXT[params.value] || '#616161',
+            fontWeight: 500
+          }}
+        />
+      )
+    },
     {
       field: 'is_backup',
       headerName: 'Loại tài khoản',

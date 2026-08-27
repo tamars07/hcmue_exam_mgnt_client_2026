@@ -65,17 +65,22 @@ const TURN_STATUS_ICONS = {
   ended: <StopOutlined />
 };
 
-const examStatusColor = (status) => {
-  switch (status) {
-    case 'Nộp bài':
-      return 'success';
-    case 'Đang thi':
-      return 'warning';
-    case 'Chờ thi':
-      return 'info';
-    default:
-      return 'default';
-  }
+// Cùng bảng màu với thẻ thí sinh ở "Giám sát ca thi" (pages/chairman/examinees/ExamineeCard.js) và
+// "Danh sách thí sinh" (pages/council-mgmt/examinees/index.js) — để 1 trạng thái luôn hiện đúng 1
+// màu dù xem ở đâu. Khoá theo đúng chuỗi exam_status mà CouncilTurnRoomController trả về (khác
+// cách viết hoa với 2 nơi kia nhưng cùng ý nghĩa).
+const EXAM_STATUS_BG = {
+  'Chưa đăng nhập': '#ecf0f5',
+  'Chờ thi': 'rgba(255,78,0,.19)',
+  'Đang thi': 'rgba(0,128,0,.19)',
+  'Nộp bài': 'rgba(0,0,255,.19)'
+};
+
+const EXAM_STATUS_TEXT = {
+  'Chưa đăng nhập': '#616161',
+  'Chờ thi': 'rgba(255,78,0,.91)',
+  'Đang thi': 'rgba(0,128,0,.91)',
+  'Nộp bài': 'rgba(0,0,255,.91)'
 };
 
 const CouncilTurnsPage = () => {
@@ -615,7 +620,15 @@ const CouncilTurnsPage = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Chip label={examinee.exam_status} size="small" color={examStatusColor(examinee.exam_status)} />
+                        <Chip
+                          label={examinee.exam_status}
+                          size="small"
+                          sx={{
+                            bgcolor: EXAM_STATUS_BG[examinee.exam_status] || '#ecf0f5',
+                            color: EXAM_STATUS_TEXT[examinee.exam_status] || '#616161',
+                            fontWeight: 500
+                          }}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

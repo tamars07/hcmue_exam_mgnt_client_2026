@@ -1,9 +1,21 @@
 import { useEffect, useState, useCallback } from 'react';
 
 // material-ui
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, MenuItem, Stack, TextField, Tooltip } from '@mui/material';
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  MenuItem,
+  Stack,
+  TextField,
+  Tooltip,
+  Typography
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, SearchOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
@@ -32,15 +44,23 @@ const SystemActivityLogsPage = () => {
 
   const [filters, setFilters] = useState({ username: '', action: '', date_from: '', date_to: '' });
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  // Chỉ gọi API sau khi người dùng bấm "Lấy dữ liệu" lần đầu — tránh tải toàn bộ nhật ký ngay khi
+  // vào trang (bảng có thể rất lớn theo thời gian sử dụng hệ thống).
+  const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
+  const fetchActionOptions = useCallback(() => {
     systemAdminService
       .getActivityLogActions()
       .then((res) => setActionOptions(res.data.data || []))
       .catch(() => setActionOptions([]));
   }, []);
 
+  useEffect(() => {
+    fetchActionOptions();
+  }, [fetchActionOptions]);
+
   const fetchRows = useCallback(async () => {
+    if (!hasSearched) return;
     setLoading(true);
     try {
       const res = await systemAdminService.getActivityLogs({
@@ -55,7 +75,7 @@ const SystemActivityLogsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [paginationModel, appliedFilters]);
+  }, [paginationModel, appliedFilters, hasSearched]);
 
   useEffect(() => {
     fetchRows();
@@ -64,6 +84,8 @@ const SystemActivityLogsPage = () => {
   const handleApplyFilters = () => {
     setPaginationModel((m) => ({ ...m, page: 0 }));
     setAppliedFilters(filters);
+    setHasSearched(true);
+    fetchActionOptions();
   };
 
   const columns = [
@@ -115,38 +137,44 @@ const SystemActivityLogsPage = () => {
           </TextField>
           <TextField
             size="small"
-            type="date"
-            label="Từ ngày"
+            type="datetime-local"
+            label="Từ ngày giờ"
             InputLabelProps={{ shrink: true }}
             value={filters.date_from}
             onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
           />
           <TextField
             size="small"
-            type="date"
-            label="Đến ngày"
+            type="datetime-local"
+            label="Đến ngày giờ"
             InputLabelProps={{ shrink: true }}
             value={filters.date_to}
             onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
           />
-          <Button variant="contained" startIcon={<ReloadOutlined />} onClick={handleApplyFilters}>
-            Lọc
+          <Button variant="contained" startIcon={<SearchOutlined />} onClick={handleApplyFilters}>
+            Lấy dữ liệu
           </Button>
         </Stack>
 
-        <DataGrid
-          autoHeight
-          rows={rows}
-          getRowId={(row) => row.id}
-          columns={columns}
-          rowCount={rowCount}
-          loading={loading}
-          paginationMode="server"
-          paginationModel={paginationModel}
-          onPaginationModelChange={setPaginationModel}
-          pageSizeOptions={[20, 50, 100]}
-          disableRowSelectionOnClick
-        />
+        {!hasSearched ? (
+          <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
+            Chọn điều kiện lọc (nếu cần) rồi bấm &quot;Lấy dữ liệu&quot; để xem nhật ký
+          </Typography>
+        ) : (
+          <DataGrid
+            autoHeight
+            rows={rows}
+            getRowId={(row) => row.id}
+            columns={columns}
+            rowCount={rowCount}
+            loading={loading}
+            paginationMode="server"
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[20, 50, 100]}
+            disableRowSelectionOnClick
+          />
+        )}
       </Stack>
 
       <Dialog open={!!detailRow} onClose={() => setDetailRow(null)} fullWidth maxWidth="sm">

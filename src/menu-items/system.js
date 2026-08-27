@@ -2,10 +2,10 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { DatabaseOutlined, SettingOutlined, FileSearchOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined } from '@ant-design/icons';
 
 // icons
-const icons = { DatabaseOutlined, SettingOutlined, FileSearchOutlined };
+const icons = { DatabaseOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined };
 
 // ==============================|| MENU ITEMS - SUPER ADMIN (SYSTEM) ||============================== //
 // Menu riêng cho khu vực /system — không đi qua getMenuItems()/lọc theo role như menu-items/index.js
@@ -41,4 +41,22 @@ const system = {
   ]
 };
 
-export default system;
+// Không có title -> NavGroup chỉ vẽ 1 đường Divider phân tách, không hiện tiêu đề nhóm — đặt cuối
+// menu trái để tách hẳn khỏi các mục quản trị hệ thống ở trên.
+const quickLinks = {
+  id: 'group-system-quicklinks',
+  type: 'group',
+  children: [
+    {
+      id: 'system-council-mgmt-login',
+      title: <FormattedMessage id="system-council-mgmt-login" defaultMessage="Quản lý Hội đồng thi" />,
+      type: 'item',
+      url: '/login',
+      icon: icons.LoginOutlined,
+      target: true,
+      color: 'success.main'
+    }
+  ]
+};
+
+export default { items: [system, quickLinks] };

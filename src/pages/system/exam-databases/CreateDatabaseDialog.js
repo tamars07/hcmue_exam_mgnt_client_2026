@@ -27,6 +27,10 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 const DB_NAME_REGEX = /^[a-zA-Z0-9_]+$/;
 const DB_NAME_PREFIX = 'hcmue_council_';
 
+// Gõ tới đâu chuẩn hoá tới đó: khoảng trắng -> "_", còn lại ký tự không hợp lệ thì bỏ luôn, để
+// người dùng không bao giờ gõ được tên vi phạm DB_NAME_REGEX ngay từ đầu.
+const sanitizeDbNameInput = (value) => value.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+
 const CREATE_MODE_MESSAGE = {
   migrate: 'Đang tạo database và dựng cấu trúc + dữ liệu mẫu... Vui lòng chờ',
   restore: 'Đang tạo database và phục hồi dữ liệu từ backup... Vui lòng chờ, quá trình này có thể mất vài phút',
@@ -125,7 +129,7 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
             fullWidth
             label="Tên database (db_name)"
             value={dbName}
-            onChange={(e) => setDbName(e.target.value.trim())}
+            onChange={(e) => setDbName(sanitizeDbNameInput(e.target.value))}
             error={!!dbName && !dbNameValid}
             autoFocus
             InputProps={usesPrefix ? { startAdornment: <InputAdornment position="start">{DB_NAME_PREFIX}</InputAdornment> } : undefined}

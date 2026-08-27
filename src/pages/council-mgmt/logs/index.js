@@ -12,15 +12,17 @@ import {
   MenuItem,
   Stack,
   TextField,
-  Tooltip
+  Tooltip,
+  Typography
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { EyeOutlined, SearchOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
+import { getRoleChipColor } from 'utils/role-colors';
 
 // ==============================|| NHẬT KÝ HỆ THỐNG ||============================== //
 
@@ -55,15 +57,23 @@ const ActivityLogsPage = () => {
 
   const [filters, setFilters] = useState({ username: '', action: '', role_id: '', date_from: '', date_to: '' });
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  // Chỉ gọi API sau khi người dùng bấm "Lấy dữ liệu" lần đầu — tránh tải toàn bộ nhật ký ngay khi
+  // vào trang (bảng có thể rất lớn theo thời gian sử dụng hệ thống).
+  const [hasSearched, setHasSearched] = useState(false);
 
-  useEffect(() => {
+  const fetchActionOptions = useCallback(() => {
     councilMgmtService
       .getActivityLogActions()
       .then((res) => setActionOptions(res.data.data || []))
       .catch(() => setActionOptions([]));
   }, []);
 
+  useEffect(() => {
+    fetchActionOptions();
+  }, [fetchActionOptions]);
+
   const fetchRows = useCallback(async () => {
+    if (!hasSearched) return;
     setLoading(true);
     try {
       const res = await councilMgmtService.getActivityLogs({
@@ -78,7 +88,7 @@ const ActivityLogsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [paginationModel, appliedFilters]);
+  }, [paginationModel, appliedFilters, hasSearched]);
 
   useEffect(() => {
     fetchRows();
@@ -87,6 +97,8 @@ const ActivityLogsPage = () => {
   const handleApplyFilters = () => {
     setPaginationModel((m) => ({ ...m, page: 0 }));
     setAppliedFilters(filters);
+    setHasSearched(true);
+    fetchActionOptions();
   };
 
   const columns = [
@@ -96,7 +108,9 @@ const ActivityLogsPage = () => {
       field: 'role_name',
       headerName: 'Vai trò',
       width: 130,
-      renderCell: (params) => <Chip label={params.value} size="small" />
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" sx={{ bgcolor: getRoleChipColor(params.row.role_id), color: '#fff' }} />
+      )
     },
     { field: 'action', headerName: 'Hành động', width: 220 },
     { field: 'council_code', headerName: 'Hội đồng thi', width: 140 },
@@ -161,38 +175,44 @@ const ActivityLogsPage = () => {
           </TextField>
           <TextField
             size="small"
-            type="date"
-            label="Từ ngày"
+            type="datetime-local"
+            label="Từ ngày giờ"
             InputLabelProps={{ shrink: true }}
             value={filters.date_from}
             onChange={(e) => setFilters((f) => ({ ...f, date_from: e.target.value }))}
           />
           <TextField
             size="small"
-            type="date"
-            label="Đến ngày"
+            type="datetime-local"
+            label="Đến ngày giờ"
             InputLabelProps={{ shrink: true }}
             value={filters.date_to}
             onChange={(e) => setFilters((f) => ({ ...f, date_to: e.target.value }))}
           />
-          <Button variant="contained" startIcon={<ReloadOutlined />} onClick={handleApplyFilters}>
-            Lọc
+          <Button variant="contained" startIcon={<SearchOutlined />} onClick={handleApplyFilters}>
+            Lấy dữ liệu
           </Button>
         </Stack>
 
-        <DataGrid
-          autoHeight
-          rows={rows}
-          getRowId={(row) => row.id}
-          columns={columns}
-          rowCount={rowCount}
-          loading={loading}
-          paginationMode="server"
-          paginationModel={paginationModel}
-          onPaginationModelChange={setPaginationModel}
-          pageSizeOptions={[20, 50, 100]}
-          disableRowSelectionOnClick
-        />
+        {!hasSearched ? (
+          <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
+            Chọn điều kiện lọc (nếu cần) rồi bấm &quot;Lấy dữ liệu&quot; để xem nhật ký
+          </Typography>
+        ) : (
+          <DataGrid
+            autoHeight
+            rows={rows}
+            getRowId={(row) => row.id}
+            columns={columns}
+            rowCount={rowCount}
+            loading={loading}
+            paginationMode="server"
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[20, 50, 100]}
+            disableRowSelectionOnClick
+          />
+        )}
       </Stack>
 
       <Dialog open={!!detailRow} onClose={() => setDetailRow(null)} fullWidth maxWidth="sm">

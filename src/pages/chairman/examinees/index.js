@@ -53,7 +53,6 @@ const ChairmanExamineesPage = () => {
   const [selectedRoomCodes, setSelectedRoomCodes] = useState([]);
 
   const [roomsData, setRoomsData] = useState([]);
-  const [selectedByRoom, setSelectedByRoom] = useState({});
 
   const [fetching, setFetching] = useState(false);
   const [autoSyncing, setAutoSyncing] = useState(false);
@@ -61,8 +60,8 @@ const ChairmanExamineesPage = () => {
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [autoSyncInterval, setAutoSyncInterval] = useState(60);
 
-  const [addTimeTarget, setAddTimeTarget] = useState(null); // { roomCode, accounts }
-  const [restoreTarget, setRestoreTarget] = useState(null); // { roomCode, accounts }
+  const [addTimeRoom, setAddTimeRoom] = useState(null); // room object (Bù giờ đồng loạt)
+  const [restoreRoom, setRestoreRoom] = useState(null); // room object (Phục hồi đồng loạt)
   const [detailAccount, setDetailAccount] = useState(null);
   const [logsAccount, setLogsAccount] = useState(null);
   const [restoreFromLogAccount, setRestoreFromLogAccount] = useState(null);
@@ -152,7 +151,6 @@ const ChairmanExamineesPage = () => {
   };
 
   const handleFetchClick = () => {
-    setSelectedByRoom({});
     fetchMonitorData(selectedRoomCodes);
   };
 
@@ -165,8 +163,12 @@ const ChairmanExamineesPage = () => {
     if (!autoSyncEnabled || !autoSyncInterval || autoSyncInterval < 5) return undefined;
 
     const timer = setInterval(() => {
-      const { fetching: isFetching, autoSyncing: isAutoSyncing, roomsData: currentRoomsData, selectedRoomCodes: currentRoomCodes } =
-        stateRef.current;
+      const {
+        fetching: isFetching,
+        autoSyncing: isAutoSyncing,
+        roomsData: currentRoomsData,
+        selectedRoomCodes: currentRoomCodes
+      } = stateRef.current;
       if (!isFetching && !isAutoSyncing && currentRoomsData.length > 0 && currentRoomCodes.length > 0) {
         fetchMonitorData(currentRoomCodes, { silent: true });
       }
@@ -177,19 +179,7 @@ const ChairmanExamineesPage = () => {
   }, [autoSyncEnabled, autoSyncInterval]);
 
   const refreshAfterAction = () => {
-    setSelectedByRoom({});
     fetchMonitorData(selectedRoomCodes, { silent: true });
-  };
-
-  const toggleSelectInRoom = (roomCode) => (username, checked) => {
-    setSelectedByRoom((prev) => {
-      const current = prev[roomCode] || [];
-      return { ...prev, [roomCode]: checked ? [...current, username] : current.filter((u) => u !== username) };
-    });
-  };
-
-  const selectAllInRoom = (roomCode) => (usernames) => {
-    setSelectedByRoom((prev) => ({ ...prev, [roomCode]: usernames }));
   };
 
   const selectedTurn = turns.find((t) => t.code === turnCode);
@@ -216,7 +206,15 @@ const ChairmanExamineesPage = () => {
                 </MenuItem>
               ))}
             </TextField>
-            <TextField select size="small" label="Ca thi" value={turnCode} disabled={!councilCode} onChange={(e) => setTurnCode(e.target.value)} sx={{ minWidth: 200 }}>
+            <TextField
+              select
+              size="small"
+              label="Ca thi"
+              value={turnCode}
+              disabled={!councilCode}
+              onChange={(e) => setTurnCode(e.target.value)}
+              sx={{ minWidth: 200 }}
+            >
               {turns.map((t) => (
                 <MenuItem key={t.code} value={t.code}>
                   {formatTurnLabel(t)}
@@ -246,13 +244,13 @@ const ChairmanExamineesPage = () => {
                   selected.length === 0
                     ? 'Chọn phòng thi'
                     : activatedRoomCodes.length > 0 &&
-                      selected.length === activatedRoomCodes.length &&
-                      activatedRoomCodes.every((c) => selected.includes(c))
-                    ? 'Phòng đã kích hoạt'
-                    : availableRooms
-                        .filter((r) => selected.includes(r.room_code))
-                        .map((r) => r.room_name)
-                        .join(', ')
+                        selected.length === activatedRoomCodes.length &&
+                        activatedRoomCodes.every((c) => selected.includes(c))
+                      ? 'Phòng đã kích hoạt'
+                      : availableRooms
+                          .filter((r) => selected.includes(r.room_code))
+                          .map((r) => r.room_name)
+                          .join(', ')
                 }
               >
                 <MenuItem value={ACTIVATED_ROOMS_VALUE} disabled={activatedRoomCodes.length === 0}>
@@ -265,7 +263,10 @@ const ChairmanExamineesPage = () => {
                     indeterminate={
                       activatedRoomCodes.length > 0 &&
                       selectedRoomCodes.some((c) => activatedRoomCodes.includes(c)) &&
-                      !(selectedRoomCodes.length === activatedRoomCodes.length && activatedRoomCodes.every((c) => selectedRoomCodes.includes(c)))
+                      !(
+                        selectedRoomCodes.length === activatedRoomCodes.length &&
+                        activatedRoomCodes.every((c) => selectedRoomCodes.includes(c))
+                      )
                     }
                     size="small"
                   />
@@ -360,17 +361,12 @@ const ChairmanExamineesPage = () => {
                   key={room.room_code}
                   room={room}
                   readOnly={!turnIsToday}
-                  selected={selectedByRoom[room.room_code] || []}
-                  onToggleSelect={toggleSelectInRoom(room.room_code)}
-                  onSelectAll={selectAllInRoom(room.room_code)}
-                  onBulkAddTime={() => setAddTimeTarget({ roomCode: room.room_code, accounts: selectedByRoom[room.room_code] || [] })}
-                  onBulkRestore={() => setRestoreTarget({ roomCode: room.room_code, accounts: selectedByRoom[room.room_code] || [] })}
                   onDetail={(examinee) => setDetailAccount(examinee)}
-                  onRestore={(examinee) => setRestoreTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
-                  onAddTime={(examinee) => setAddTimeTarget({ roomCode: room.room_code, accounts: [examinee.username] })}
                   onViewLogs={(examinee) => setLogsAccount(examinee)}
                   onRestoreFromLog={(username) => setRestoreFromLogAccount(username)}
                   onReset={(examinee) => setResetTarget(examinee)}
+                  onOpenRestore={() => setRestoreRoom(room)}
+                  onOpenAddTime={() => setAddTimeRoom(room)}
                 />
               ))}
             </Stack>
@@ -378,23 +374,23 @@ const ChairmanExamineesPage = () => {
         )}
       </Stack>
 
-      {addTimeTarget && (
+      {addTimeRoom && (
         <AddTimeDialog
           open
-          onClose={() => setAddTimeTarget(null)}
+          onClose={() => setAddTimeRoom(null)}
           turnCode={turnCode}
-          roomCode={addTimeTarget.roomCode}
-          accounts={addTimeTarget.accounts}
+          roomCode={addTimeRoom.room_code}
+          examinees={addTimeRoom.examinees || []}
           onDone={refreshAfterAction}
         />
       )}
-      {restoreTarget && (
+      {restoreRoom && (
         <RestoreDialog
           open
-          onClose={() => setRestoreTarget(null)}
+          onClose={() => setRestoreRoom(null)}
           turnCode={turnCode}
-          roomCode={restoreTarget.roomCode}
-          accounts={restoreTarget.accounts}
+          roomCode={restoreRoom.room_code}
+          examinees={restoreRoom.examinees || []}
           onDone={refreshAfterAction}
         />
       )}

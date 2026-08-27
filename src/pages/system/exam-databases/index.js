@@ -27,7 +27,6 @@ import {
   DeleteOutlined,
   ImportOutlined,
   InboxOutlined,
-  LoginOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
 
@@ -133,16 +132,6 @@ const ExamDatabasesPage = () => {
             control={<Switch checked={withArchived} onChange={(e) => setWithArchived(e.target.checked)} />}
             label="Hiện cả DB đã lưu trữ"
           />
-          <Button
-            variant="outlined"
-            startIcon={<LoginOutlined />}
-            component="a"
-            href="/login"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Quản lý Hội đồng thi
-          </Button>
           <Button variant="contained" startIcon={<DatabaseOutlined />} onClick={() => setCreateOpen(true)}>
             Thêm mới DB
           </Button>

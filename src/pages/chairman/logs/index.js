@@ -1,173 +1,191 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 // material-ui
 import {
-  Autocomplete,
+  Box,
+  Button,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   MenuItem,
   Stack,
-  Tab,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tabs,
   TextField,
+  Tooltip,
   Typography
 } from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import { EyeOutlined, SearchOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
-import useAuth from 'hooks/useAuth';
-import { isCouncilRunningToday, formatTurnLabel } from 'utils/council-schedule';
+import { formatTurnLabel } from 'utils/council-schedule';
+import { getRoleChipColor } from 'utils/role-colors';
 
-// ==============================|| ĐIỂM TRƯỞNG - NHẬT KÝ ||============================== //
+// ==============================|| ĐIỂM TRƯỞNG - NHẬT KÝ KÌ THI ||============================== //
+// Chỉ hiện thao tác của Điểm trưởng/Cán bộ coi thi/Thí sinh, trong phạm vi hội đồng thi điểm trưởng
+// đang đăng nhập được phân công quản lý — đã lọc sẵn ở backend (ChairmanLogController::activityLogs()),
+// không cần bộ lọc theo ngày vì phạm vi dữ liệu đã đủ nhỏ.
+
+const ROLE_OPTIONS = [
+  { id: 7, label: 'Điểm trưởng' },
+  { id: 4, label: 'Cán bộ coi thi' },
+  { id: 8, label: 'Thí sinh' }
+];
+
+const formatDesc = (desc) => {
+  if (!desc) return '';
+  try {
+    const parsed = JSON.parse(desc);
+    return JSON.stringify(parsed, null, 2);
+  } catch (e) {
+    return desc;
+  }
+};
 
 const ChairmanLogsPage = () => {
-  const { user } = useAuth();
-  const isAdmin = user?.roles?.includes('ADMIN');
+  const [rows, setRows] = useState([]);
+  const [rowCount, setRowCount] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
+  const [actionOptions, setActionOptions] = useState([]);
+  const [detailRow, setDetailRow] = useState(null);
 
   const [councils, setCouncils] = useState([]);
-  const [councilCode, setCouncilCode] = useState('');
   const [turns, setTurns] = useState([]);
-  const [turnCode, setTurnCode] = useState('');
   const [rooms, setRooms] = useState([]);
-  const [roomCode, setRoomCode] = useState('');
 
-  const [tab, setTab] = useState(0);
+  const [filters, setFilters] = useState({ username: '', action: '', role_id: '', council_code: '', council_turn_code: '', room_code: '' });
+  const [appliedFilters, setAppliedFilters] = useState(filters);
+  // Chỉ gọi API sau khi người dùng bấm "Lấy dữ liệu" lần đầu — tránh tải toàn bộ nhật ký ngay khi
+  // vào trang.
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const [importLogs, setImportLogs] = useState([]);
-  const [monitorLogs, setMonitorLogs] = useState([]);
+  const fetchActionOptions = useCallback(() => {
+    chairmanService
+      .getActivityLogActions()
+      .then((res) => setActionOptions(res.data.data || []))
+      .catch(() => setActionOptions([]));
+  }, []);
 
-  const [examinees, setExaminees] = useState([]);
-  const [examineeAccount, setExamineeAccount] = useState('');
-  const [examineeActivity, setExamineeActivity] = useState(null);
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
+  useEffect(() => {
+    fetchActionOptions();
+  }, [fetchActionOptions]);
 
   useEffect(() => {
     chairmanService
       .getMyCouncils()
-      .then((res) => {
-        // Điểm trưởng: chỉ hiện hội đồng thi đang diễn ra hôm nay. Admin: hiện tất cả hội đồng thi.
-        const list = isAdmin ? res.data.data || [] : (res.data.data || []).filter(isCouncilRunningToday);
-        setCouncils(list);
-        if (list.length > 0) setCouncilCode(list[0].code);
-      })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+      .then((res) => setCouncils(res.data.data || []))
+      .catch(() => setCouncils([]));
+  }, []);
 
+  // Đổi hội đồng thi -> nạp lại danh sách ca thi, reset lựa chọn ca thi/phòng thi đang chọn (không
+  // còn hợp lệ với hội đồng thi mới).
   useEffect(() => {
-    setTurnCode('');
-    setSearchQuery('');
-    setSearchResults([]);
-    if (!councilCode) {
+    setFilters((f) => ({ ...f, council_turn_code: '', room_code: '' }));
+    setRooms([]);
+    if (!filters.council_code) {
       setTurns([]);
       return;
     }
     chairmanService
-      .getCouncilTurns(councilCode)
-      .then((res) => setTurns(res.data.data))
+      .getCouncilTurns(filters.council_code)
+      .then((res) => setTurns(res.data.data || []))
       .catch(() => setTurns([]));
-  }, [councilCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.council_code]);
 
+  // Đổi ca thi -> nạp lại danh sách phòng thi, reset lựa chọn phòng thi đang chọn.
   useEffect(() => {
-    if (!turnCode) {
+    setFilters((f) => ({ ...f, room_code: '' }));
+    if (!filters.council_turn_code) {
       setRooms([]);
       return;
     }
     chairmanService
-      .getCouncilTurnRooms(turnCode)
-      .then((res) =>
-        setRooms([...res.data.data].sort((a, b) => (a.room_name || '').localeCompare(b.room_name || '', 'vi', { numeric: true })))
-      )
+      .getCouncilTurnRooms(filters.council_turn_code)
+      .then((res) => setRooms(res.data.data || []))
       .catch(() => setRooms([]));
-    setRoomCode('');
-  }, [turnCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters.council_turn_code]);
+
+  const fetchRows = useCallback(async () => {
+    if (!hasSearched) return;
+    setLoading(true);
+    try {
+      const res = await chairmanService.getActivityLogs({
+        page: paginationModel.page,
+        pageSize: paginationModel.pageSize,
+        ...appliedFilters
+      });
+      setRows(res.data.data.items);
+      setRowCount(res.data.data.total);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Không tải được nhật ký', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setLoading(false);
+    }
+  }, [paginationModel, appliedFilters, hasSearched]);
 
   useEffect(() => {
-    if (!turnCode) {
-      setImportLogs([]);
-      return;
-    }
-    chairmanService
-      .getTestDataImportLogs(turnCode)
-      .then((res) => setImportLogs(res.data.data))
-      .catch((e) => openSnackbar({ open: true, message: e?.message || 'Không tải được nhật ký nạp đề', variant: 'alert', alert: { color: 'error' } }));
-  }, [turnCode]);
+    fetchRows();
+  }, [fetchRows]);
 
-  useEffect(() => {
-    if (!turnCode) {
-      setMonitorLogs([]);
-      return;
-    }
-    chairmanService
-      .getMonitorActivityLogs(turnCode, roomCode)
-      .then((res) => setMonitorLogs(res.data.data))
-      .catch((e) => openSnackbar({ open: true, message: e?.message || 'Không tải được nhật ký cán bộ coi thi', variant: 'alert', alert: { color: 'error' } }));
-  }, [turnCode, roomCode]);
+  const handleApplyFilters = () => {
+    setPaginationModel((m) => ({ ...m, page: 0 }));
+    setAppliedFilters(filters);
+    setHasSearched(true);
+    fetchActionOptions();
+  };
 
-  useEffect(() => {
-    if (!turnCode || !roomCode) {
-      setExaminees([]);
-      return;
+  const columns = [
+    { field: 'log_time', headerName: 'Thời điểm', width: 160 },
+    { field: 'username', headerName: 'Tài khoản', width: 220 },
+    {
+      field: 'role_name',
+      headerName: 'Vai trò',
+      width: 130,
+      renderCell: (params) => (
+        <Chip label={params.value} size="small" sx={{ bgcolor: getRoleChipColor(params.row.role_id), color: '#fff' }} />
+      )
+    },
+    { field: 'action', headerName: 'Hành động', width: 200 },
+    { field: 'council_code', headerName: 'Hội đồng thi', width: 130 },
+    { field: 'council_turn_code', headerName: 'Ca thi', width: 130 },
+    { field: 'room_code', headerName: 'Phòng thi', width: 120 },
+    {
+      field: 'detail',
+      headerName: '',
+      width: 70,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Tooltip title="Xem chi tiết">
+          <IconButton size="small" onClick={() => setDetailRow(params.row)}>
+            <EyeOutlined />
+          </IconButton>
+        </Tooltip>
+      )
     }
-    chairmanService
-      .getExamineesByRoom(turnCode, roomCode)
-      .then((res) => setExaminees(res.data.data.examinees))
-      .catch(() => setExaminees([]));
-    setExamineeAccount('');
-    setExamineeActivity(null);
-  }, [turnCode, roomCode]);
-
-  useEffect(() => {
-    if (!examineeAccount) {
-      setExamineeActivity(null);
-      return;
-    }
-    chairmanService
-      .getExamineeActivityLogs(examineeAccount)
-      .then((res) => setExamineeActivity(res.data.data))
-      .catch(() => setExamineeActivity(null));
-  }, [examineeAccount]);
-
-  // Tìm thí sinh theo tài khoản/CCCD-MSSV/họ tên khi không nhớ ca thi/phòng thi — chỉ cần hội đồng thi.
-  useEffect(() => {
-    if (!councilCode || searchQuery.trim().length < 2) {
-      setSearchResults([]);
-      return undefined;
-    }
-    setSearching(true);
-    const timer = setTimeout(() => {
-      chairmanService
-        .searchExaminees(councilCode, searchQuery.trim())
-        .then((res) => setSearchResults(res.data.data))
-        .catch(() => setSearchResults([]))
-        .finally(() => setSearching(false));
-    }, 350);
-    return () => clearTimeout(timer);
-  }, [councilCode, searchQuery]);
+  ];
 
   return (
     <MainCard title="Nhật ký kì thi">
       <Stack spacing={2}>
-        <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))', gap: 1.5 }}>
           <TextField
-            select
             size="small"
+            select
+            fullWidth
             label="Hội đồng thi"
-            value={councilCode}
-            onChange={(e) => setCouncilCode(e.target.value)}
-            sx={{ minWidth: 240 }}
-            helperText={councils.length === 0 ? (isAdmin ? 'Chưa có hội đồng thi nào' : 'Không có hội đồng thi nào diễn ra hôm nay') : ''}
+            value={filters.council_code}
+            onChange={(e) => setFilters((f) => ({ ...f, council_code: e.target.value }))}
           >
+            <MenuItem value="">Tất cả</MenuItem>
             {councils.map((c) => (
               <MenuItem key={c.code} value={c.code}>
                 {c.desc || c.code}
@@ -175,243 +193,111 @@ const ChairmanLogsPage = () => {
             ))}
           </TextField>
           <TextField
-            select
             size="small"
+            select
+            fullWidth
             label="Ca thi"
-            value={turnCode}
-            disabled={!councilCode}
-            onChange={(e) => setTurnCode(e.target.value)}
-            sx={{ minWidth: 200 }}
+            value={filters.council_turn_code}
+            disabled={!filters.council_code}
+            onChange={(e) => setFilters((f) => ({ ...f, council_turn_code: e.target.value }))}
           >
+            <MenuItem value="">Tất cả</MenuItem>
             {turns.map((t) => (
               <MenuItem key={t.code} value={t.code}>
                 {formatTurnLabel(t)}
               </MenuItem>
             ))}
           </TextField>
-          {tab !== 0 && (
-            <TextField
-              select
-              size="small"
-              label="Phòng thi"
-              value={roomCode}
-              disabled={!turnCode}
-              onChange={(e) => setRoomCode(e.target.value)}
-              sx={{ minWidth: 200 }}
-            >
-              <MenuItem value="">Tất cả phòng thi</MenuItem>
-              {rooms.map((r) => (
-                <MenuItem key={r.room_code} value={r.room_code}>
-                  {r.room_name || r.room_code}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-        </Stack>
+          <TextField
+            size="small"
+            select
+            fullWidth
+            label="Phòng thi"
+            value={filters.room_code}
+            disabled={!filters.council_turn_code}
+            onChange={(e) => setFilters((f) => ({ ...f, room_code: e.target.value }))}
+          >
+            <MenuItem value="">Tất cả</MenuItem>
+            {rooms.map((r) => (
+              <MenuItem key={r.room_code} value={r.room_code}>
+                {r.room_name || r.room_code}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Box />
 
-        <Tabs value={tab} onChange={(e, v) => setTab(v)}>
-          <Tab label="Nạp đề thi" />
-          <Tab label="Cán bộ coi thi" />
-          <Tab label="Thí sinh" />
-        </Tabs>
+          <TextField
+            size="small"
+            fullWidth
+            label="Tài khoản"
+            value={filters.username}
+            onChange={(e) => setFilters((f) => ({ ...f, username: e.target.value }))}
+          />
+          <TextField
+            size="small"
+            select
+            fullWidth
+            label="Hành động"
+            value={filters.action}
+            onChange={(e) => setFilters((f) => ({ ...f, action: e.target.value }))}
+          >
+            <MenuItem value="">Tất cả</MenuItem>
+            {actionOptions.map((a) => (
+              <MenuItem key={a} value={a}>
+                {a}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            size="small"
+            select
+            fullWidth
+            label="Vai trò"
+            value={filters.role_id}
+            onChange={(e) => setFilters((f) => ({ ...f, role_id: e.target.value }))}
+          >
+            <MenuItem value="">Tất cả</MenuItem>
+            {ROLE_OPTIONS.map((r) => (
+              <MenuItem key={r.id} value={r.id}>
+                {r.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Button variant="contained" startIcon={<SearchOutlined />} onClick={handleApplyFilters}>
+            Lấy dữ liệu
+          </Button>
+        </Box>
 
-        {tab === 0 &&
-          (!turnCode ? (
-            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              Chọn ca thi để xem nhật ký nạp đề thi.
-            </Typography>
-          ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Môn thi</TableCell>
-                    <TableCell>Số đề đã nạp</TableCell>
-                    <TableCell>Đã sử dụng</TableCell>
-                    <TableCell>Nạp lần đầu</TableCell>
-                    <TableCell>Nạp lần cuối</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {importLogs.map((row) => (
-                    <TableRow key={row.subject_id}>
-                      <TableCell>{row.subject}</TableCell>
-                      <TableCell>{row.total_mixes}</TableCell>
-                      <TableCell>{row.used_mixes}</TableCell>
-                      <TableCell>{row.first_imported_at}</TableCell>
-                      <TableCell>{row.last_imported_at}</TableCell>
-                    </TableRow>
-                  ))}
-                  {importLogs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5}>
-                        <Typography color="text.secondary" align="center">
-                          Ca thi này chưa được nạp đề thi.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ))}
-
-        {tab === 1 &&
-          (!turnCode ? (
-            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              Chọn ca thi để xem nhật ký cán bộ coi thi.
-            </Typography>
-          ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Thời gian</TableCell>
-                    <TableCell>Tài khoản</TableCell>
-                    <TableCell>Phòng thi</TableCell>
-                    <TableCell>Hành động</TableCell>
-                    <TableCell>Lý do / Chi tiết</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {monitorLogs.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell>{row.log_time}</TableCell>
-                      <TableCell>{row.username}</TableCell>
-                      <TableCell>{row.room_code}</TableCell>
-                      <TableCell>
-                        <Chip label={row.action} size="small" />
-                      </TableCell>
-                      <TableCell>{row.message || (typeof row.detail === 'string' ? row.detail : '')}</TableCell>
-                    </TableRow>
-                  ))}
-                  {monitorLogs.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={5}>
-                        <Typography color="text.secondary" align="center">
-                          Chưa có hoạt động nào của cán bộ coi thi.
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ))}
-
-        {tab === 2 &&
-          (!councilCode ? (
-            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-              Chọn hội đồng thi để tìm thí sinh.
-            </Typography>
-          ) : (
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
-                <Autocomplete
-                  sx={{ minWidth: 340 }}
-                  options={searchResults}
-                  loading={searching}
-                  value={null}
-                  inputValue={searchQuery}
-                  onInputChange={(e, value) => setSearchQuery(value)}
-                  getOptionLabel={(opt) => (opt ? `${opt.code} - ${opt.fullname} (${opt.username})` : '')}
-                  isOptionEqualToValue={(opt, val) => opt.username === val.username}
-                  noOptionsText={searchQuery.trim().length < 2 ? 'Nhập ít nhất 2 ký tự để tìm' : 'Không tìm thấy thí sinh'}
-                  onChange={(e, value) => {
-                    if (value) {
-                      setExamineeAccount(value.username);
-                      setSearchQuery('');
-                      setSearchResults([]);
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField {...params} size="small" label="Tìm thí sinh (tài khoản / CCCD-MSSV / họ tên)" />
-                  )}
-                />
-                <TextField
-                  select
-                  size="small"
-                  label="Hoặc chọn theo phòng thi"
-                  value={examineeAccount}
-                  disabled={!roomCode}
-                  onChange={(e) => setExamineeAccount(e.target.value)}
-                  sx={{ minWidth: 300 }}
-                  helperText={!roomCode ? 'Chọn ca thi + phòng thi ở trên để lọc theo phòng' : ''}
-                >
-                  {examinees.map((ex) => (
-                    <MenuItem key={ex.username} value={ex.username}>
-                      {ex.code} - {ex.fullname}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-
-              {examineeActivity && (
-                <>
-                  <Typography variant="subtitle1">Dòng thời gian</Typography>
-                  <TableContainer sx={{ maxHeight: 300 }}>
-                    <Table size="small" stickyHeader>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Thời gian</TableCell>
-                          <TableCell>Hành động</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {examineeActivity.timeline.map((row) => (
-                          <TableRow key={row.id}>
-                            <TableCell>{row.log_time}</TableCell>
-                            <TableCell>
-                              <Chip label={row.action} size="small" />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        {examineeActivity.timeline.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={2}>
-                              <Typography color="text.secondary" align="center">
-                                Chưa có hoạt động nào.
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-
-                  <Typography variant="subtitle1">Tiến độ trả lời từng câu</Typography>
-                  <TableContainer sx={{ maxHeight: 300 }}>
-                    <Table size="small" stickyHeader>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Câu</TableCell>
-                          <TableCell>Thời điểm trả lời</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {examineeActivity.progress.map((row) => (
-                          <TableRow key={row.question_id}>
-                            <TableCell>{row.question_number}</TableCell>
-                            <TableCell>{row.submitted_at || '—'}</TableCell>
-                          </TableRow>
-                        ))}
-                        {examineeActivity.progress.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={2}>
-                              <Typography color="text.secondary" align="center">
-                                Chưa trả lời câu nào.
-                              </Typography>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </>
-              )}
-            </Stack>
-          ))}
+        {!hasSearched ? (
+          <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
+            Chọn điều kiện lọc (nếu cần) rồi bấm &quot;Lấy dữ liệu&quot; để xem nhật ký
+          </Typography>
+        ) : (
+          <DataGrid
+            autoHeight
+            rows={rows}
+            getRowId={(row) => row.id}
+            columns={columns}
+            rowCount={rowCount}
+            loading={loading}
+            paginationMode="server"
+            paginationModel={paginationModel}
+            onPaginationModelChange={setPaginationModel}
+            pageSizeOptions={[20, 50, 100]}
+            disableRowSelectionOnClick
+          />
+        )}
       </Stack>
+
+      <Dialog open={!!detailRow} onClose={() => setDetailRow(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Chi tiết nhật ký — {detailRow?.action}</DialogTitle>
+        <DialogContent>
+          <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', margin: 0 }}>{formatDesc(detailRow?.desc)}</pre>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDetailRow(null)}>Đóng</Button>
+        </DialogActions>
+      </Dialog>
     </MainCard>
   );
 };

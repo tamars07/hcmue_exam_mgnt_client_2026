@@ -1,7 +1,8 @@
 import PropTypes from 'prop-types';
 
 // material-ui
-import { Box, Button, Checkbox, Chip, Paper, Stack, Typography } from '@mui/material';
+import { Box, Chip, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/material';
+import { EyeOutlined, FileSearchOutlined, RollbackOutlined, ClearOutlined } from '@ant-design/icons';
 
 // ==============================|| GIÁM SÁT KÌ THI - THẺ THÍ SINH ||============================== //
 // Layout phỏng theo component Card trong hcmue_client_2026/src/pages/exam/giamthi.js.
@@ -47,9 +48,7 @@ const getProgressColor = (answeredCount, totalQuestions) => {
   return '#D32F2F';
 };
 
-// onRestoreFromLog/onReset (Phục hồi từ nhật ký, Reset kết quả) tạm ẩn khỏi giao diện — không nhận
-// nữa ở đây nhưng cha vẫn có thể truyền xuống bình thường, không lỗi gì, chỉ cần thêm lại khi bật.
-const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, onRestore, onAddTime, onViewLogs }) => {
+const ExamineeCard = ({ examinee, readOnly, onDetail, onViewLogs, onRestoreFromLog, onReset }) => {
   const {
     seat_number: seatNumber,
     status,
@@ -77,13 +76,6 @@ const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, 
   const header = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
       <Stack direction="row" spacing={0.5} alignItems="center">
-        <Checkbox
-          size="small"
-          checked={selected}
-          disabled={readOnly}
-          onChange={(e) => onToggleSelect(username, e.target.checked)}
-          sx={{ p: 0 }}
-        />
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Máy {seatNumber}
         </Typography>
@@ -163,38 +155,74 @@ const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, 
             {lastUpdateTime || 'Chưa trả lời'}
           </span>
         </Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'right', mt: 0.5 }}>
-          <Stack direction="row" spacing={0.5}>
-            {status !== 'CHỜ THI' && (
-              <Button variant="contained" size="small" sx={{ backgroundColor: '#0aa1a1' }} onClick={() => onDetail(examinee)}>
-                Xem
-              </Button>
-            )}
-            <Button
-              variant="contained"
-              size="small"
-              disabled={readOnly}
-              sx={{ backgroundColor: '#104874' }}
-              onClick={() => onRestore(examinee)}
+        <Stack direction="row" sx={{ mt: 0.5, width: '100%' }} justifyContent="space-around">
+          {status !== 'CHỜ THI' && (
+            <Tooltip title="Xem">
+              <IconButton
+                sx={{
+                  color: 'success.contrastText',
+                  bgcolor: 'success.main',
+                  border: '1px solid',
+                  borderColor: 'success.dark',
+                  '&:hover': { bgcolor: 'success.dark' }
+                }}
+                onClick={() => onDetail(examinee)}
+              >
+                <EyeOutlined style={{ fontSize: 18 }} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="Xem logs">
+            <IconButton
+              sx={{
+                color: 'info.contrastText',
+                bgcolor: 'info.main',
+                border: '1px solid',
+                borderColor: 'info.dark',
+                '&:hover': { bgcolor: 'info.dark' }
+              }}
+              onClick={() => onViewLogs(examinee)}
             >
-              Phục hồi
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              disabled={readOnly}
-              sx={{ backgroundColor: '#d1373f' }}
-              onClick={() => onAddTime(examinee)}
-            >
-              Bù giờ
-            </Button>
-            <Button variant="outlined" size="small" onClick={() => onViewLogs(examinee)}>
-              Xem logs
-            </Button>
-            {/* TẠM ẨN: "Phục hồi từ nhật ký" và "Reset kết quả" đang chạy chưa đúng — ẩn khỏi giao
-                diện cho tới khi sửa xong, giữ nguyên props/dialog/handler bên dưới để bật lại nhanh. */}
-          </Stack>
-        </Box>
+              <FileSearchOutlined style={{ fontSize: 18 }} />
+            </IconButton>
+          </Tooltip>
+          {answeredCount > 0 && (
+            <Tooltip title="Phục hồi từ nhật ký">
+              <span>
+                <IconButton
+                  sx={{
+                    color: 'warning.contrastText',
+                    bgcolor: 'warning.main',
+                    border: '1px solid',
+                    borderColor: 'warning.dark',
+                    '&:hover': { bgcolor: 'warning.dark' }
+                  }}
+                  disabled={readOnly}
+                  onClick={() => onRestoreFromLog(username)}
+                >
+                  <RollbackOutlined style={{ fontSize: 18 }} />
+                </IconButton>
+              </span>
+            </Tooltip>
+          )}
+          <Tooltip title="Reset kết quả">
+            <span>
+              <IconButton
+                sx={{
+                  color: 'error.contrastText',
+                  bgcolor: 'error.main',
+                  border: '1px solid',
+                  borderColor: 'error.dark',
+                  '&:hover': { bgcolor: 'error.dark' }
+                }}
+                disabled={readOnly}
+                onClick={() => onReset(examinee)}
+              >
+                <ClearOutlined style={{ fontSize: 18 }} />
+              </IconButton>
+            </span>
+          </Tooltip>
+        </Stack>
       </Stack>
     </Paper>
   );
@@ -203,12 +231,10 @@ const ExamineeCard = ({ examinee, readOnly, selected, onToggleSelect, onDetail, 
 ExamineeCard.propTypes = {
   examinee: PropTypes.object.isRequired,
   readOnly: PropTypes.bool,
-  selected: PropTypes.bool,
-  onToggleSelect: PropTypes.func.isRequired,
   onDetail: PropTypes.func.isRequired,
-  onRestore: PropTypes.func.isRequired,
-  onAddTime: PropTypes.func.isRequired,
-  onViewLogs: PropTypes.func.isRequired
+  onViewLogs: PropTypes.func.isRequired,
+  onRestoreFromLog: PropTypes.func.isRequired,
+  onReset: PropTypes.func.isRequired
 };
 
 export default ExamineeCard;

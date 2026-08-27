@@ -27,6 +27,9 @@ const getMonitorActivityLogs = (councilTurnCode, roomCode) =>
   axios.get(`${BASE}/logs/monitor-activity`, { params: { council_turn_code: councilTurnCode, room_code: roomCode || undefined } });
 const getExamineeActivityLogs = (examineeAccount) =>
   axios.get(`${BASE}/logs/examinee-activity`, { params: { examinee_account: examineeAccount } });
+// Nhật ký kì thi dạng bảng chung (điểm trưởng/cán bộ coi thi/thí sinh, trong hội đồng thi được phân công)
+const getActivityLogs = (params) => axios.get(`${BASE}/logs/activity`, { params });
+const getActivityLogActions = () => axios.get(`${BASE}/logs/actions`);
 // Tìm thí sinh theo tài khoản/CCCD-MSSV/họ lót/tên khi không nhớ ca thi/phòng thi
 const searchExaminees = (councilCode, search) =>
   axios.get(`${BASE}/logs/examinees/search`, { params: { council_code: councilCode, search } });
@@ -68,6 +71,7 @@ const cleanupTurnData = (turnCode, confirmCode, message) =>
   axios.post(`${BASE}/council-turns/${turnCode}/data-cleanup`, { confirm_code: confirmCode, message });
 
 // Khôi phục câu trả lời từ nhật ký + reset kết quả thí sinh
+const previewRestoreAnswersFromLog = (account, payload) => axios.post(`${BASE}/examinees/${account}/restore-answers/preview`, payload);
 const restoreAnswersFromLog = (account, payload) => axios.post(`${BASE}/examinees/${account}/restore-answers`, payload);
 const resetExamineeResult = (account, payload) => axios.post(`${BASE}/examinees/${account}/reset-result`, payload);
 
@@ -96,6 +100,8 @@ const chairmanService = {
   getTestDataImportLogs,
   getMonitorActivityLogs,
   getExamineeActivityLogs,
+  getActivityLogs,
+  getActivityLogActions,
   searchExaminees,
   getDashboardStats,
   previewTestMixImport,
@@ -111,6 +117,7 @@ const chairmanService = {
   resumeTurnData,
   backupTurnData,
   cleanupTurnData,
+  previewRestoreAnswersFromLog,
   restoreAnswersFromLog,
   resetExamineeResult,
   getExamineesByRoom,

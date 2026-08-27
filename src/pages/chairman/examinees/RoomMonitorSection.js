@@ -1,8 +1,8 @@
 import PropTypes from 'prop-types';
 
 // material-ui
-import { Alert, Box, Button, Checkbox, FormControlLabel, Grid, Stack, Typography } from '@mui/material';
-import { ClockCircleOutlined } from '@ant-design/icons';
+import { Alert, Box, Button, Grid, Stack, Typography } from '@mui/material';
+import { ClockCircleOutlined, SyncOutlined } from '@ant-design/icons';
 
 // project import
 import ExamineeCard from './ExamineeCard';
@@ -31,28 +31,9 @@ const summarize = (examinees) => ({
   submitted: examinees.filter((e) => e.status === 'ĐÃ NỘP BÀI').length
 });
 
-const ELIGIBLE_BULK_STATUSES = ['ĐANG THI', 'ĐÃ NỘP BÀI'];
-
-const RoomMonitorSection = ({
-  room,
-  readOnly,
-  selected,
-  onToggleSelect,
-  onSelectAll,
-  onBulkAddTime,
-  onBulkRestore,
-  onDetail,
-  onRestore,
-  onAddTime,
-  onViewLogs,
-  onRestoreFromLog,
-  onReset
-}) => {
+const RoomMonitorSection = ({ room, readOnly, onDetail, onViewLogs, onRestoreFromLog, onReset, onOpenRestore, onOpenAddTime }) => {
   const examinees = room.examinees || [];
   const stats = summarize(examinees);
-  const eligibleExaminees = examinees.filter((ex) => ELIGIBLE_BULK_STATUSES.includes(ex.status));
-  const allSelected = eligibleExaminees.length > 0 && selected.length === eligibleExaminees.length;
-  const someSelected = selected.length > 0 && !allSelected;
 
   return (
     <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
@@ -72,7 +53,13 @@ const RoomMonitorSection = ({
         </Stack>
       </Box>
 
-      <Stack direction="row" justifyContent="space-around" flexWrap="wrap" rowGap={1} sx={{ backgroundColor: '#333', color: '#fff', py: 1.5 }}>
+      <Stack
+        direction="row"
+        justifyContent="space-around"
+        flexWrap="wrap"
+        rowGap={1}
+        sx={{ backgroundColor: '#333', color: '#fff', py: 1.5 }}
+      >
         <StatusBox title="TỔNG THÍ SINH" count={stats.total} color="#d1373f" />
         <StatusBox title="CHƯA ĐĂNG NHẬP" count={stats.notLoggedIn} color="#eee" />
         <StatusBox title="CHỜ THI" count={stats.waiting} color="#faad14" />
@@ -83,28 +70,11 @@ const RoomMonitorSection = ({
 
       <Box sx={{ p: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={1} sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={allSelected}
-                indeterminate={someSelected}
-                disabled={readOnly || eligibleExaminees.length === 0}
-                onChange={(e) => onSelectAll(e.target.checked ? eligibleExaminees.map((ex) => ex.username) : [])}
-              />
-            }
-            label="Chọn tất cả (đang thi / đã nộp bài)"
-          />
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<ClockCircleOutlined />}
-            disabled={readOnly || selected.length === 0}
-            onClick={onBulkAddTime}
-          >
-            Bù giờ đã chọn ({selected.length})
+          <Button size="small" variant="outlined" startIcon={<SyncOutlined />} disabled={readOnly} onClick={onOpenRestore}>
+            Phục hồi đồng loạt
           </Button>
-          <Button size="small" variant="outlined" disabled={readOnly || selected.length === 0} onClick={onBulkRestore}>
-            Phục hồi đã chọn ({selected.length})
+          <Button size="small" variant="outlined" startIcon={<ClockCircleOutlined />} disabled={readOnly} onClick={onOpenAddTime}>
+            Bù giờ đồng loạt
           </Button>
         </Stack>
 
@@ -119,11 +89,7 @@ const RoomMonitorSection = ({
                 <ExamineeCard
                   examinee={ex}
                   readOnly={readOnly}
-                  selected={selected.includes(ex.username)}
-                  onToggleSelect={onToggleSelect}
                   onDetail={onDetail}
-                  onRestore={onRestore}
-                  onAddTime={onAddTime}
                   onViewLogs={onViewLogs}
                   onRestoreFromLog={onRestoreFromLog}
                   onReset={onReset}
@@ -140,17 +106,12 @@ const RoomMonitorSection = ({
 RoomMonitorSection.propTypes = {
   room: PropTypes.object.isRequired,
   readOnly: PropTypes.bool,
-  selected: PropTypes.array.isRequired,
-  onToggleSelect: PropTypes.func.isRequired,
-  onSelectAll: PropTypes.func.isRequired,
-  onBulkAddTime: PropTypes.func.isRequired,
-  onBulkRestore: PropTypes.func.isRequired,
   onDetail: PropTypes.func.isRequired,
-  onRestore: PropTypes.func.isRequired,
-  onAddTime: PropTypes.func.isRequired,
   onViewLogs: PropTypes.func.isRequired,
   onRestoreFromLog: PropTypes.func.isRequired,
-  onReset: PropTypes.func.isRequired
+  onReset: PropTypes.func.isRequired,
+  onOpenRestore: PropTypes.func.isRequired,
+  onOpenAddTime: PropTypes.func.isRequired
 };
 
 export default RoomMonitorSection;

@@ -52,7 +52,9 @@ const NavItem = ({ item, level, isParents = false }) => {
     // eslint-disable-next-line
   }, [pathname]);
 
-  const textColor = theme.palette.mode === ThemeMode.DARK ? 'grey.400' : 'text.primary';
+  // item.color (vd 'success.main') cho phép 1 mục nổi bật hẳn khỏi các mục còn lại — dùng cho link
+  // dẫn sang khu vực khác hẳn (vd "Quản lý Hội đồng thi" ở menu Super Admin).
+  const textColor = item.color || (theme.palette.mode === ThemeMode.DARK ? 'grey.400' : 'text.primary');
   const iconSelectedColor = theme.palette.mode === ThemeMode.DARK && drawerOpen ? 'text.primary' : 'primary.main';
 
   return (
