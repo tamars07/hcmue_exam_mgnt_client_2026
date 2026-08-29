@@ -48,7 +48,33 @@ const getProgressColor = (answeredCount, totalQuestions) => {
   return '#D32F2F';
 };
 
-const ExamineeCard = ({ examinee, readOnly, onDetail, onViewLogs, onRestoreFromLog, onReset }) => {
+// Chấm trạng thái kết nối realtime (Reverb, presence channel + whisper) — độc lập với
+// getLastUpdateStatus() ở trên (đó là suy đoán theo độ trễ hoạt động, giữ nguyên làm nguồn dự
+// phòng). Không hiện gì cả nếu chưa có dữ liệu realtime (undefined) — tránh gây nhiễu khi Reverb
+// chưa cấu hình, thay vì luôn hiện 1 chấm xám cho mọi thẻ.
+const ConnectivityDot = ({ status }) => {
+  if (!status) return null;
+  const isOnline = status === 'online';
+  return (
+    <Tooltip title={isOnline ? 'Đang kết nối (realtime)' : 'Mất kết nối (realtime)'}>
+      <Box
+        sx={{
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          bgcolor: isOnline ? 'success.main' : 'error.main',
+          border: '1px solid rgba(0,0,0,0.2)',
+          ...(isOnline ? {} : { animation: 'blink 1s step-start infinite' }),
+          '@keyframes blink': { '50%': { opacity: 0.25 } }
+        }}
+      />
+    </Tooltip>
+  );
+};
+
+ConnectivityDot.propTypes = { status: PropTypes.oneOf(['online', 'offline']) };
+
+const ExamineeCard = ({ examinee, readOnly, onDetail, onViewLogs, onRestoreFromLog, onReset, connectionStatus }) => {
   const {
     seat_number: seatNumber,
     status,
@@ -72,10 +98,14 @@ const ExamineeCard = ({ examinee, readOnly, onDetail, onViewLogs, onRestoreFromL
   const progressColor = getProgressColor(answeredCount, totalQuestions);
   const lastUpdateStatus = getLastUpdateStatus(lastUpdateTime);
   const hasInteracted = !!ipAddress || status !== 'CHƯA ĐĂNG NHẬP';
+  // Chỉ báo mất kết nối khi thí sinh đang thi — trước khi vào phòng thi (CHỜ THI) hay sau khi đã nộp
+  // bài (ĐÃ NỘP BÀI) thì việc rớt kết nối không còn ý nghĩa cảnh báo, tránh nhấp nháy đỏ gây hoang mang.
+  const dotStatus = status === 'ĐANG THI' ? connectionStatus : undefined;
 
   const header = (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-      <Stack direction="row" spacing={0.5} alignItems="center">
+      <Stack direction="row" spacing={0.75} alignItems="center">
+        <ConnectivityDot status={dotStatus} />
         <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
           Máy {seatNumber}
         </Typography>
@@ -234,7 +264,8 @@ ExamineeCard.propTypes = {
   onDetail: PropTypes.func.isRequired,
   onViewLogs: PropTypes.func.isRequired,
   onRestoreFromLog: PropTypes.func.isRequired,
-  onReset: PropTypes.func.isRequired
+  onReset: PropTypes.func.isRequired,
+  connectionStatus: PropTypes.oneOf(['online', 'offline'])
 };
 
 export default ExamineeCard;

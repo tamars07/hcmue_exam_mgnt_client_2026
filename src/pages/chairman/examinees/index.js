@@ -27,6 +27,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useRoomsRealtime from 'hooks/useRoomsRealtime';
 import RoomMonitorSection from './RoomMonitorSection';
 import AddTimeDialog from './AddTimeDialog';
 import RestoreDialog from './RestoreDialog';
@@ -182,6 +183,39 @@ const ChairmanExamineesPage = () => {
     fetchMonitorData(selectedRoomCodes, { silent: true });
   };
 
+  // Realtime: đẩy tức thời tiến độ làm bài (không thay thế polling ở trên, chỉ giảm độ trễ khi có
+  // Reverb) — patch đúng examinee trong đúng phòng theo username, bỏ qua nếu phòng/examinee đó
+  // chưa có trong roomsData hiện tại (vd chưa "Lấy dữ liệu" lần nào).
+  const handleRealtimeProgress = (roomCode, payload) => {
+    setRoomsData((prev) =>
+      prev.map((room) => {
+        if (room.room_code !== roomCode) return room;
+        return {
+          ...room,
+          examinees: (room.examinees || []).map((ex) =>
+            ex.username === payload.username
+              ? {
+                  ...ex,
+                  answered_count: payload.answered_count,
+                  total_questions: payload.total_questions,
+                  status: payload.status,
+                  last_update_time: payload.last_update_time,
+                  // ip_address chỉ có ở sự kiện bắn từ lúc đăng nhập — null ở các sự kiện khác nghĩa là
+                  // "không đổi", không được ghi đè mất IP đã biết trước đó.
+                  ip_address: payload.ip_address || ex.ip_address
+                }
+              : ex
+          )
+        };
+      })
+    );
+  };
+
+  const { connectivity, echoConnected } = useRoomsRealtime(turnCode, selectedRoomCodes, { onProgress: handleRealtimeProgress });
+  // Khi chính kết nối realtime của điểm trưởng bị gián đoạn, ẩn hết chấm trạng thái từng thí sinh —
+  // tránh hiểu nhầm "cả phòng mất kết nối" trong khi thực ra chỉ là điểm trưởng đang bị rớt mạng.
+  const visibleConnectivity = echoConnected ? connectivity : {};
+
   const selectedTurn = turns.find((t) => t.code === turnCode);
   const turnIsToday = isTurnToday(selectedTurn);
   const activatedRoomCodes = availableRooms.filter((r) => r.is_active).map((r) => r.room_code);
@@ -315,6 +349,11 @@ const ChairmanExamineesPage = () => {
                 Ca thi này không diễn ra hôm nay — chỉ có thể xem thông tin, không thể bù giờ/phục hồi/reset kết quả.
               </Alert>
             )}
+            {!echoConnected && (
+              <Alert severity="warning">
+                Kết nối realtime gián đoạn — đang dùng dữ liệu đồng bộ định kỳ, trạng thái kết nối từng thí sinh tạm thời không hiển thị.
+              </Alert>
+            )}
             <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" rowGap={1}>
               <Button variant="contained" color="success" startIcon={<SyncOutlined />} disabled={fetching} onClick={handleSyncClick}>
                 Đồng bộ
@@ -367,6 +406,7 @@ const ChairmanExamineesPage = () => {
                   onReset={(examinee) => setResetTarget(examinee)}
                   onOpenRestore={() => setRestoreRoom(room)}
                   onOpenAddTime={() => setAddTimeRoom(room)}
+                  connectivity={visibleConnectivity}
                 />
               ))}
             </Stack>

@@ -31,7 +31,17 @@ const summarize = (examinees) => ({
   submitted: examinees.filter((e) => e.status === 'ĐÃ NỘP BÀI').length
 });
 
-const RoomMonitorSection = ({ room, readOnly, onDetail, onViewLogs, onRestoreFromLog, onReset, onOpenRestore, onOpenAddTime }) => {
+const RoomMonitorSection = ({
+  room,
+  readOnly,
+  onDetail,
+  onViewLogs,
+  onRestoreFromLog,
+  onReset,
+  onOpenRestore,
+  onOpenAddTime,
+  connectivity
+}) => {
   const examinees = room.examinees || [];
   const stats = summarize(examinees);
 
@@ -93,6 +103,7 @@ const RoomMonitorSection = ({ room, readOnly, onDetail, onViewLogs, onRestoreFro
                   onViewLogs={onViewLogs}
                   onRestoreFromLog={onRestoreFromLog}
                   onReset={onReset}
+                  connectionStatus={connectivity?.[ex.username]}
                 />
               </Grid>
             ))}
@@ -111,7 +122,8 @@ RoomMonitorSection.propTypes = {
   onRestoreFromLog: PropTypes.func.isRequired,
   onReset: PropTypes.func.isRequired,
   onOpenRestore: PropTypes.func.isRequired,
-  onOpenAddTime: PropTypes.func.isRequired
+  onOpenAddTime: PropTypes.func.isRequired,
+  connectivity: PropTypes.object
 };
 
 export default RoomMonitorSection;
