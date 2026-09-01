@@ -7,10 +7,30 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Web site created using create-react-app" />
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <script type="text/javascript" async src="%PUBLIC_URL%/MathJax/MathJax.js?config=MML_HTMLorMML-full"></script>
-    <!-- <script>
-
-    </script> -->
+    <!--
+      MathJax 3 (same version/config as the backend's council & question-bank views).
+      Nothing in this app currently renders question/answer HTML, so there's no
+      typesetPromise() call yet — add one (see hcmue_client_2026's utils/mathjax.js
+      for the pattern) if a page here starts displaying question content.
+    -->
+    <script>
+      window.MathJax = {
+        loader: {
+          load: ['[tex]/mhchem']
+        },
+        tex: {
+          inlineMath: [['$', '$'], ['\\(', '\\)']],
+          packages: { '[+]': ['mhchem'] }
+        },
+        svg: {
+          fontCache: 'global'
+        },
+        startup: {
+          typeset: false
+        }
+      };
+    </script>
+    <script id="MathJax-script" async src="%PUBLIC_URL%/MathJax/tex-mml-svg.js"></script>
     <!-- <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet"> -->
      <style>
       
