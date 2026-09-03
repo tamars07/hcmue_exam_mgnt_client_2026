@@ -17,7 +17,9 @@ const GuestGuard = ({ children }) => {
     if (isLoggedIn) {
       // Điểm trưởng (không kiêm ADMIN) vào thẳng màn hình Giám sát kì thi thay vì dashboard chung.
       const isChairmanOnly = user?.roles?.includes('CHAIRMAN') && !user?.roles?.includes('ADMIN');
-      const defaultPath = isChairmanOnly ? '/chairman/examinees' : APP_DEFAULT_PATH;
+      // Giám khảo (không kiêm ADMIN) vào thẳng trang chấm thi, không thấy dashboard/menu quản trị.
+      const isExaminerOnly = user?.roles?.includes('EXAMINER') && !user?.roles?.includes('ADMIN');
+      const defaultPath = isChairmanOnly ? '/chairman/examinees' : isExaminerOnly ? '/grading/workspace' : APP_DEFAULT_PATH;
 
       navigate(location?.state?.from ? location?.state?.from : defaultPath, {
         state: {

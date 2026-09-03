@@ -7,6 +7,8 @@ import PagesLayout from 'layout/Pages';
 import SimpleLayout from 'layout/Simple';
 import { SimpleLayoutType } from 'config';
 import ChairmanGuard from 'utils/route-guard/ChairmanGuard';
+import GradingAdminGuard from 'utils/route-guard/GradingAdminGuard';
+import ExaminerGuard from 'utils/route-guard/ExaminerGuard';
 
 const MaintenanceError = Loadable(lazy(() => import('pages/maintenance/404')));
 const MaintenanceError500 = Loadable(lazy(() => import('pages/maintenance/500')));
@@ -30,6 +32,17 @@ const ChairmanTestImportPage = Loadable(lazy(() => import('pages/chairman/test-i
 const ChairmanRoomsPage = Loadable(lazy(() => import('pages/chairman')));
 const ChairmanExamineesPage = Loadable(lazy(() => import('pages/chairman/examinees')));
 const ChairmanLogsPage = Loadable(lazy(() => import('pages/chairman/logs')));
+
+// render - grading (chấm thi, B1-B8)
+const GradingImportDataPage = Loadable(lazy(() => import('pages/grading/import-data')));
+const GradingAnswerKeysPage = Loadable(lazy(() => import('pages/grading/answer-keys')));
+const GradingAutoMarkingPage = Loadable(lazy(() => import('pages/grading/auto-marking')));
+const GradingExaminersPage = Loadable(lazy(() => import('pages/grading/examiners')));
+const GradingExaminerPairsPage = Loadable(lazy(() => import('pages/grading/examiner-pairs')));
+const GradingAssignmentsPage = Loadable(lazy(() => import('pages/grading/assignments')));
+const GradingDeviationsPage = Loadable(lazy(() => import('pages/grading/deviations')));
+const GradingResultsPage = Loadable(lazy(() => import('pages/grading/results')));
+const GradingWorkspacePage = Loadable(lazy(() => import('pages/grading/workspace')));
 
 // ==============================|| MAIN ROUTING ||============================== //
 
@@ -106,6 +119,78 @@ const MainRoutes = {
             <ChairmanGuard>
               <ChairmanLogsPage />
             </ChairmanGuard>
+          )
+        },
+        {
+          path: 'grading/import-data',
+          element: (
+            <GradingAdminGuard>
+              <GradingImportDataPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/answer-keys',
+          element: (
+            <GradingAdminGuard>
+              <GradingAnswerKeysPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/auto-marking',
+          element: (
+            <GradingAdminGuard>
+              <GradingAutoMarkingPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/examiners',
+          element: (
+            <GradingAdminGuard>
+              <GradingExaminersPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/examiner-pairs',
+          element: (
+            <GradingAdminGuard>
+              <GradingExaminerPairsPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/assignments',
+          element: (
+            <GradingAdminGuard>
+              <GradingAssignmentsPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/deviations',
+          element: (
+            <GradingAdminGuard>
+              <GradingDeviationsPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/results',
+          element: (
+            <GradingAdminGuard>
+              <GradingResultsPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/workspace',
+          element: (
+            <ExaminerGuard>
+              <GradingWorkspacePage />
+            </ExaminerGuard>
           )
         }
       ]

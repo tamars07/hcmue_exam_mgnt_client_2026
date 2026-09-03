@@ -1,8 +1,9 @@
 // project import
 import councilMgmt from './council-mgmt';
 import chairman from './chairman';
+import grading from './grading';
 
-const allGroups = [councilMgmt, chairman];
+const allGroups = [councilMgmt, chairman, grading];
 
 // ==============================|| MENU ITEMS ||============================== //
 
