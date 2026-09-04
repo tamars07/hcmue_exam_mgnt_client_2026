@@ -61,12 +61,13 @@ const getRubricCriterias = (id) => axios.get(`${BASE}/rubrics/${id}/criterias`);
 const updateRubricCriterias = (id, criterias, forceReset) =>
   axios.put(`${BASE}/rubrics/${id}/criterias`, { criterias, force_reset: forceReset || undefined });
 
-// B3 — chấm tự động (5 phạm vi)
-const autoMarkAll = () => axios.post(`${BASE}/auto-marking/all`);
-const autoMarkByCouncil = (councilCode) => axios.post(`${BASE}/auto-marking/council/${councilCode}`);
-const autoMarkByCouncilTurn = (councilTurnCode) => axios.post(`${BASE}/auto-marking/council-turn/${councilTurnCode}`);
-const autoMarkBySubject = (subjectId) => axios.post(`${BASE}/auto-marking/subject/${subjectId}`);
-const autoMarkByExaminee = (examineeTestCode) => axios.post(`${BASE}/auto-marking/examinee/${examineeTestCode}`);
+// B3 — chấm tự động (Hội đồng bắt buộc + Ca thi/Môn thi/Loại câu hỏi tuỳ chọn)
+const runAutoMarking = (params) => axios.post(`${BASE}/auto-marking/run`, params);
+const getAutoMarkingResults = (params) => axios.get(`${BASE}/auto-marking/results`, { params });
+const getAutoMarkingExamDetail = (examineeTestCode) => axios.get(`${BASE}/auto-marking/results/${examineeTestCode}`);
+const regradeExaminee = (examineeTestCode) => axios.post(`${BASE}/auto-marking/examinee/${examineeTestCode}`);
+const overrideAutoMarkingResult = (answerKeyId, isCorrect) =>
+  axios.put(`${BASE}/auto-marking/answer-keys/${answerKeyId}/override`, { is_correct: isCorrect });
 
 // B4 — tài khoản giám khảo
 const getExaminers = (params) => axios.get(`${BASE}/examiners`, { params: toListParams(params) });
@@ -119,11 +120,11 @@ const gradingService = {
   updateRubric,
   getRubricCriterias,
   updateRubricCriterias,
-  autoMarkAll,
-  autoMarkByCouncil,
-  autoMarkByCouncilTurn,
-  autoMarkBySubject,
-  autoMarkByExaminee,
+  runAutoMarking,
+  getAutoMarkingResults,
+  getAutoMarkingExamDetail,
+  regradeExaminee,
+  overrideAutoMarkingResult,
   getExaminers,
   createExaminer,
   importExaminers,

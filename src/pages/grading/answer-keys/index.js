@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogTitle,
   IconButton,
+  InputAdornment,
   Link,
   ListItemText,
   MenuItem,
@@ -31,7 +32,9 @@ import {
   EyeOutlined,
   FileExcelOutlined,
   FileProtectOutlined,
+  FormOutlined,
   PlusOutlined,
+  SearchOutlined,
   SyncOutlined,
   UploadOutlined
 } from '@ant-design/icons';
@@ -47,7 +50,6 @@ import gradingService from 'services/grading.service';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import useSubjects from 'hooks/useSubjects';
-import useQuestionTypes from 'hooks/useQuestionTypes';
 import sanitizeHtml from 'utils/sanitizeHtml';
 
 const ANSWER_TYPE_OPTIONS = [
@@ -79,15 +81,16 @@ const downloadBlob = (blob, filename) => {
 
 const AnswerKeysTab = () => {
   const { withLoading } = useLoadingOverlay();
-  const subjects = useSubjects();
-  const questionTypes = useQuestionTypes();
 
   const [councils, setCouncils] = useState([]);
   const [councilTurns, setCouncilTurns] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [questionTypes, setQuestionTypes] = useState([]);
   const [councilCode, setCouncilCode] = useState('');
   const [councilTurnCode, setCouncilTurnCode] = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [questionTypeId, setQuestionTypeId] = useState('');
+  const [searchQuestionCode, setSearchQuestionCode] = useState('');
 
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
@@ -142,13 +145,25 @@ const AnswerKeysTab = () => {
 
   useEffect(() => {
     setCouncilTurnCode('');
+    setSubjectId('');
+    setQuestionTypeId('');
     if (!councilCode) {
       setCouncilTurns([]);
+      setSubjects([]);
+      setQuestionTypes([]);
       return;
     }
     councilMgmtService
       .getLookup('council_turns', { council_code: councilCode })
       .then((res) => setCouncilTurns(res.data.data))
+      .catch(() => {});
+    councilMgmtService
+      .getLookup('subjects', { council_code: councilCode })
+      .then((res) => setSubjects(res.data.data))
+      .catch(() => {});
+    councilMgmtService
+      .getLookup('question_types', { council_code: councilCode })
+      .then((res) => setQuestionTypes(res.data.data))
       .catch(() => {});
   }, [councilCode]);
 
@@ -157,9 +172,10 @@ const AnswerKeysTab = () => {
       council_code: councilCode,
       council_turn_code: councilTurnCode || undefined,
       subject_id: subjectId || undefined,
-      question_type_id: questionTypeId || undefined
+      question_type_id: questionTypeId || undefined,
+      question_code: searchQuestionCode.trim() || undefined
     }),
-    [councilCode, councilTurnCode, subjectId, questionTypeId]
+    [councilCode, councilTurnCode, subjectId, questionTypeId, searchQuestionCode]
   );
 
   const fetchRows = useCallback(
@@ -203,6 +219,32 @@ const AnswerKeysTab = () => {
   const handlePaginationChange = (model) => {
     setPaginationModel(model);
     if (hasSearched) fetchRows(model);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') handleViewData();
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuestionCode('');
+    const initial = { page: 0, pageSize: 20 };
+    setPaginationModel(initial);
+    setLoading(true);
+    gradingService
+      .getAnswerKeys({ ...currentScopeParams(), question_code: undefined, page: initial.page, pageSize: initial.pageSize })
+      .then((res) => {
+        setRows(res.data.data.items);
+        setRowCount(res.data.data.total);
+        setHasSearched(true);
+      })
+      .catch((e) =>
+        openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách', variant: 'alert', alert: { color: 'error' } })
+      )
+      .finally(() => setLoading(false));
+    gradingService
+      .getAnswerKeyStats({ ...currentScopeParams(), question_code: undefined })
+      .then((res) => setStats(res.data.data))
+      .catch(() => setStats(null));
   };
 
   const applyImportResult = (result, message) => {
@@ -488,7 +530,16 @@ const AnswerKeysTab = () => {
   };
 
   const columns = [
-    { field: 'question_code', headerName: 'Mã câu hỏi', width: 160 },
+    {
+      field: 'question_code',
+      headerName: 'Mã câu hỏi',
+      width: 160,
+      renderCell: (params) => (
+        <Link component="button" underline="hover" onClick={() => handleView(params.row)}>
+          {params.value}
+        </Link>
+      )
+    },
     {
       field: 'subject_id',
       headerName: 'Môn thi',
@@ -532,22 +583,13 @@ const AnswerKeysTab = () => {
     {
       field: 'actions',
       headerName: '',
-      width: 100,
+      width: 160,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Xem câu hỏi">
-            <IconButton size="small" onClick={() => handleView(params.row)}>
-              <EyeOutlined />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Sửa đáp án">
-            <IconButton size="small" onClick={() => openEdit(params.row)}>
-              <EditOutlined />
-            </IconButton>
-          </Tooltip>
-        </Stack>
+        <Button size="small" variant="contained" startIcon={<FormOutlined />} onClick={() => openEdit(params.row)}>
+          Sửa đáp án
+        </Button>
       )
     }
   ];
@@ -592,6 +634,7 @@ const AnswerKeysTab = () => {
           label="Môn thi"
           value={subjectId}
           onChange={(e) => setSubjectId(e.target.value)}
+          disabled={!councilCode}
           sx={{ minWidth: 180 }}
         >
           <MenuItem value="">-- Tất cả môn thi --</MenuItem>
@@ -607,6 +650,7 @@ const AnswerKeysTab = () => {
           label="Loại câu hỏi"
           value={questionTypeId}
           onChange={(e) => setQuestionTypeId(e.target.value)}
+          disabled={!councilCode}
           sx={{ minWidth: 200 }}
         >
           <MenuItem value="">-- Tất cả loại --</MenuItem>
@@ -620,6 +664,33 @@ const AnswerKeysTab = () => {
           Xem dữ liệu
         </Button>
       </Stack>
+
+      {hasSearched && (
+        <Stack direction="row" spacing={1} alignItems="center">
+          <TextField
+            size="small"
+            label="Tìm theo mã câu hỏi"
+            value={searchQuestionCode}
+            onChange={(e) => setSearchQuestionCode(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
+            sx={{ maxWidth: 320 }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={handleViewData}>
+                    <SearchOutlined />
+                  </IconButton>
+                </InputAdornment>
+              )
+            }}
+          />
+          {searchQuestionCode && (
+            <Button size="small" onClick={handleClearSearch}>
+              Huỷ
+            </Button>
+          )}
+        </Stack>
+      )}
 
       <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1} justifyContent="space-between">
         <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
