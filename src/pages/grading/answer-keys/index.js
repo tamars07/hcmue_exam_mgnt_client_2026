@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 // material-ui
 import {
+  Alert,
   Box,
   Button,
   Checkbox,
@@ -23,7 +24,7 @@ import {
   Typography
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
+import { DownloadOutlined, EditOutlined, EyeOutlined, ImportOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -52,6 +53,17 @@ const QUESTION_TYPE_TN1 = 1;
 const QUESTION_TYPE_TNN = 2;
 const QUESTION_TYPE_TLN = 4;
 const QUESTION_TYPE_ESSAY = 5;
+
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
 
 // ==============================|| B2 - TAB ĐÁP ÁN ||============================== //
 
@@ -91,6 +103,16 @@ const AnswerKeysTab = () => {
   // Popup xem tiêu chí rubric (chỉ xem, không sửa — sửa thật sự ở tab Rubric)
   const [viewRubric, setViewRubric] = useState(null);
   const [viewRubricCriterias, setViewRubricCriterias] = useState([]);
+
+  // Import đáp án — 3 cách
+  const [importResult, setImportResult] = useState(null);
+  const [confirmImportQBOpen, setConfirmImportQBOpen] = useState(false);
+  const [examFileDialogOpen, setExamFileDialogOpen] = useState(false);
+  const [examFile, setExamFile] = useState(null);
+  const [examFilePassword, setExamFilePassword] = useState('');
+  const [excelDialogOpen, setExcelDialogOpen] = useState(false);
+  const [excelFile, setExcelFile] = useState(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     councilMgmtService
@@ -152,6 +174,89 @@ const AnswerKeysTab = () => {
   const handlePaginationChange = (model) => {
     setPaginationModel(model);
     if (hasSearched) fetchRows(model);
+  };
+
+  const currentScopeParams = () => ({
+    council_code: councilCode,
+    council_turn_code: councilTurnCode || undefined,
+    subject_id: subjectId || undefined,
+    question_type_id: questionTypeId || undefined
+  });
+
+  const applyImportResult = (result, message) => {
+    setImportResult(result);
+    openSnackbar({ open: true, message, variant: 'alert', alert: { color: 'success' } });
+    if (hasSearched) fetchRows(paginationModel);
+  };
+
+  // ---- Cách 1: đồng bộ từ ngân hàng câu hỏi (theo phạm vi đang lọc) ----
+  const handleImportFromQuestionBank = () => {
+    if (!councilCode) {
+      openSnackbar({ open: true, message: 'Chọn Hội đồng thi', variant: 'alert', alert: { color: 'warning' } });
+      return;
+    }
+    setConfirmImportQBOpen(true);
+  };
+
+  const doImportFromQuestionBank = async () => {
+    setConfirmImportQBOpen(false);
+    setImporting(true);
+    try {
+      const res = await gradingService.importAnswerKeysFromQuestionBank(currentScopeParams());
+      applyImportResult(res.data.data, res.data.message);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Đồng bộ thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // ---- Cách 2: nhập từ file đề thi mã hoá ----
+  const doImportFromExamFile = async () => {
+    if (!examFile || !examFilePassword) {
+      openSnackbar({ open: true, message: 'Chọn file và nhập mật khẩu', variant: 'alert', alert: { color: 'warning' } });
+      return;
+    }
+    setImporting(true);
+    try {
+      const res = await gradingService.importAnswerKeysFromExamFile(examFile, examFilePassword);
+      applyImportResult(res.data.data, res.data.message);
+      setExamFileDialogOpen(false);
+      setExamFile(null);
+      setExamFilePassword('');
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Nhập từ file thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // ---- Cách 3: nhập từ Excel ----
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await gradingService.downloadAnswerKeyImportTemplate();
+      downloadBlob(res.data, 'Mau_import_dap_an.xlsx');
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Tải file mẫu thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const doImportFromExcel = async () => {
+    if (!excelFile) {
+      openSnackbar({ open: true, message: 'Chọn file Excel', variant: 'alert', alert: { color: 'warning' } });
+      return;
+    }
+    setImporting(true);
+    try {
+      const res = await gradingService.importAnswerKeysFromExcel(excelFile);
+      applyImportResult(res.data.data, res.data.message);
+      setExcelDialogOpen(false);
+      setExcelFile(null);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Nhập từ Excel thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setImporting(false);
+    }
   };
 
   // ---- Xem nội dung câu hỏi (icon mắt) ----
@@ -416,6 +521,49 @@ const AnswerKeysTab = () => {
         </Button>
       </Stack>
 
+      <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
+        <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center', mr: 1 }}>
+          Import đáp án:
+        </Typography>
+        <Button size="small" variant="outlined" startIcon={<ImportOutlined />} onClick={handleImportFromQuestionBank} disabled={importing}>
+          Từ ngân hàng câu hỏi
+        </Button>
+        <Button size="small" variant="outlined" startIcon={<UploadOutlined />} onClick={() => setExamFileDialogOpen(true)} disabled={importing}>
+          Từ file đề thi
+        </Button>
+        <Button size="small" variant="outlined" startIcon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+          Tải file mẫu Excel
+        </Button>
+        <Button size="small" variant="outlined" startIcon={<UploadOutlined />} onClick={() => setExcelDialogOpen(true)} disabled={importing}>
+          Từ Excel
+        </Button>
+      </Stack>
+
+      {importResult && (
+        <Alert severity={importResult.errors?.length || importResult.skipped?.length ? 'warning' : 'success'} onClose={() => setImportResult(null)}>
+          Đã cập nhật <b>{importResult.updated_count}</b> câu.
+          {importResult.skipped?.length > 0 && (
+            <Box component="div" sx={{ mt: 0.5 }}>
+              Bỏ qua {importResult.skipped.length} câu (đã có giám khảo chấm, cần sửa tay ở màn hình sửa từng câu):
+              <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                {importResult.skipped.map((s, i) => (
+                  <li key={i}>
+                    Câu #{s.question_id}: {s.reason}
+                  </li>
+                ))}
+              </Box>
+            </Box>
+          )}
+          {importResult.errors?.length > 0 && (
+            <Box component="ul" sx={{ m: '4px 0 0', pl: 2 }}>
+              {importResult.errors.map((err, i) => (
+                <li key={i}>{typeof err === 'string' ? err : `Câu #${err.question_id}: ${err.reason}`}</li>
+              ))}
+            </Box>
+          )}
+        </Alert>
+      )}
+
       {!hasSearched ? (
         <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
           Chọn Hội đồng thi (bắt buộc), thu hẹp thêm nếu cần, rồi bấm &quot;Xem dữ liệu&quot;
@@ -639,6 +787,95 @@ const AnswerKeysTab = () => {
             disabled={saving}
           >
             Xác nhận reset &amp; đổi rubric
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cách 1: xác nhận đồng bộ từ ngân hàng câu hỏi */}
+      <Dialog open={confirmImportQBOpen} onClose={() => setConfirmImportQBOpen(false)}>
+        <DialogTitle>Đồng bộ đáp án từ ngân hàng câu hỏi</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Áp lại đáp án hiện có trong ngân hàng câu hỏi (questions.answer_key) cho toàn bộ câu trắc nghiệm/trả lời ngắn trong phạm vi
+            đang lọc, chấm lại các bài đã có điểm. Câu tự luận không áp dụng (không có gì để đồng bộ). Bạn có chắc chắn muốn tiếp tục?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmImportQBOpen(false)}>Huỷ</Button>
+          <Button variant="contained" onClick={doImportFromQuestionBank} disabled={importing}>
+            Xác nhận đồng bộ
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cách 2: nhập từ file đề thi mã hoá */}
+      <Dialog open={examFileDialogOpen} onClose={() => setExamFileDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Nhập đáp án từ file đề thi</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Dùng cùng file đề thi mã hoá (.dat) và mật khẩu như khi nhập đề — chỉ đồng bộ đáp án của các câu ĐÃ TỒN TẠI trong hệ
+              thống, không tạo câu/đề mới. Câu tự luận không áp dụng.
+            </Typography>
+            <Button component="label" variant="outlined" startIcon={<UploadOutlined />} sx={{ alignSelf: 'flex-start' }}>
+              {examFile ? examFile.name : 'Chọn file .dat'}
+              <input type="file" accept=".dat" hidden onChange={(e) => setExamFile(e.target.files?.[0] || null)} />
+            </Button>
+            <TextField
+              fullWidth
+              type="password"
+              label="Mật khẩu file"
+              value={examFilePassword}
+              onChange={(e) => setExamFilePassword(e.target.value)}
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setExamFileDialogOpen(false);
+              setExamFile(null);
+              setExamFilePassword('');
+            }}
+          >
+            Huỷ
+          </Button>
+          <Button variant="contained" onClick={doImportFromExamFile} disabled={importing}>
+            Nhập đáp án
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Cách 3: nhập từ Excel */}
+      <Dialog open={excelDialogOpen} onClose={() => setExcelDialogOpen(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Nhập đáp án từ Excel</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ mt: 1 }}>
+            <Typography variant="body2" color="text.secondary">
+              Tải file mẫu ở nút &quot;Tải file mẫu Excel&quot;, điền dữ liệu rồi chọn file đã điền để nhập lại vào hệ thống.
+            </Typography>
+            <Button component="label" variant="outlined" startIcon={<UploadOutlined />} sx={{ alignSelf: 'flex-start' }}>
+              {excelFile ? excelFile.name : 'Chọn file Excel'}
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                hidden
+                onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
+              />
+            </Button>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => {
+              setExcelDialogOpen(false);
+              setExcelFile(null);
+            }}
+          >
+            Huỷ
+          </Button>
+          <Button variant="contained" onClick={doImportFromExcel} disabled={importing}>
+            Nhập đáp án
           </Button>
         </DialogActions>
       </Dialog>

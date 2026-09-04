@@ -19,6 +19,19 @@ const getPhachOverview = (params) => axios.get(`${BASE}/import/phach`, { params:
 const getAnswerKeys = (params) => axios.get(`${BASE}/answer-keys`, { params: toListParams(params) });
 const getAnswerKeyDetail = (questionId) => axios.get(`${BASE}/answer-keys/${questionId}`);
 const updateAnswerKey = (questionId, payload) => axios.put(`${BASE}/answer-keys/${questionId}`, payload);
+const importAnswerKeysFromQuestionBank = (payload) => axios.post(`${BASE}/answer-keys/import/question-bank`, payload);
+const importAnswerKeysFromExamFile = (file, password) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('password', password);
+  return axios.post(`${BASE}/answer-keys/import/exam-file`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+const downloadAnswerKeyImportTemplate = () => axios.get(`${BASE}/answer-keys/import/template`, { responseType: 'blob' });
+const importAnswerKeysFromExcel = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return axios.post(`${BASE}/answer-keys/import/excel`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
 
 // B2 — rubric + tiêu chí chấm tự luận
 const getRubrics = (params) => axios.get(`${BASE}/rubrics`, { params: toListParams(params) });
@@ -74,6 +87,10 @@ const gradingService = {
   getAnswerKeys,
   getAnswerKeyDetail,
   updateAnswerKey,
+  importAnswerKeysFromQuestionBank,
+  importAnswerKeysFromExamFile,
+  downloadAnswerKeyImportTemplate,
+  importAnswerKeysFromExcel,
   getRubrics,
   createRubric,
   updateRubric,
