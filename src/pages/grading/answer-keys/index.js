@@ -4,12 +4,17 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   IconButton,
+  Link,
+  ListItemText,
   MenuItem,
+  OutlinedInput,
+  Select,
   Stack,
   Tab,
   Tabs,
@@ -18,7 +23,7 @@ import {
   Typography
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { EditOutlined, EyeOutlined, PlusOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -31,119 +36,360 @@ import gradingService from 'services/grading.service';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import useSubjects from 'hooks/useSubjects';
+import useQuestionTypes from 'hooks/useQuestionTypes';
+import sanitizeHtml from 'utils/sanitizeHtml';
 
-const ANSWER_TYPES = ['INTEGER_NUMBER', 'DOUBLE_NUMBER', 'ORDER_LIST', 'UNORDER_LIST', 'COORDINATE', 'MIX'];
-const QUESTION_TYPE_LABEL = { 1: 'TN 1 đáp án', 2: 'TN nhiều đáp án', 4: 'Trả lời ngắn' };
+const ANSWER_TYPE_OPTIONS = [
+  { value: 'INTEGER_NUMBER', label: 'Dạng số NGUYÊN' },
+  { value: 'DOUBLE_NUMBER', label: 'Dạng số THỰC' },
+  { value: 'UNORDER_LIST', label: 'Dạng liệt kê KHÔNG thứ tự' },
+  { value: 'ORDER_LIST', label: 'Dạng liệt kê CÓ thứ tự' },
+  { value: 'COORDINATE', label: 'Dạng TỌA ĐỘ' },
+  { value: 'MIX', label: 'Dạng hỗn hợp chữ số' }
+];
+
+const QUESTION_TYPE_TN1 = 1;
+const QUESTION_TYPE_TNN = 2;
+const QUESTION_TYPE_TLN = 4;
+const QUESTION_TYPE_ESSAY = 5;
 
 // ==============================|| B2 - TAB ĐÁP ÁN ||============================== //
 
 const AnswerKeysTab = () => {
   const { withLoading } = useLoadingOverlay();
   const subjects = useSubjects();
+  const questionTypes = useQuestionTypes();
+
+  const [councils, setCouncils] = useState([]);
+  const [councilTurns, setCouncilTurns] = useState([]);
+  const [councilCode, setCouncilCode] = useState('');
+  const [councilTurnCode, setCouncilTurnCode] = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [questionTypeId, setQuestionTypeId] = useState('');
+
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
-  const [subjectId, setSubjectId] = useState('');
-  const [councilTurnCode, setCouncilTurnCode] = useState('');
-  const [editing, setEditing] = useState(null);
+  const [hasSearched, setHasSearched] = useState(false);
+
   const [questionMarks, setQuestionMarks] = useState([]);
+  const [rubricOptions, setRubricOptions] = useState([]);
+
+  // Sửa đáp án
+  const [editing, setEditing] = useState(null); // row đang sửa
+  const [editDetail, setEditDetail] = useState(null); // nội dung câu hỏi + phương án (từ API show)
+  const [editValues, setEditValues] = useState({});
+  const [saving, setSaving] = useState(false);
+  const [confirmSaveOpen, setConfirmSaveOpen] = useState(false);
+  const [requiresResetOpen, setRequiresResetOpen] = useState(false);
+
+  // Popup xem nội dung câu hỏi (icon mắt)
+  const [viewDetail, setViewDetail] = useState(null);
+  const [viewLoading, setViewLoading] = useState(false);
+
+  // Popup xem tiêu chí rubric (chỉ xem, không sửa — sửa thật sự ở tab Rubric)
+  const [viewRubric, setViewRubric] = useState(null);
+  const [viewRubricCriterias, setViewRubricCriterias] = useState([]);
 
   useEffect(() => {
     councilMgmtService
       .getLookup('question_marks')
       .then((res) => setQuestionMarks(res.data.data))
       .catch(() => {});
+    councilMgmtService
+      .getLookup('councils')
+      .then((res) => setCouncils(res.data.data))
+      .catch(() => {});
   }, []);
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await gradingService.getAnswerKeys({
-        page: paginationModel.page,
-        pageSize: paginationModel.pageSize,
-        subject_id: subjectId || undefined,
-        council_turn_code: councilTurnCode || undefined
-      });
-      setRows(res.data.data.items);
-      setRowCount(res.data.data.total);
-    } catch (e) {
-      openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách', variant: 'alert', alert: { color: 'error' } });
-    } finally {
-      setLoading(false);
-    }
-  }, [paginationModel, subjectId, councilTurnCode]);
-
   useEffect(() => {
-    fetchRows();
-  }, [fetchRows]);
+    setCouncilTurnCode('');
+    if (!councilCode) {
+      setCouncilTurns([]);
+      return;
+    }
+    councilMgmtService
+      .getLookup('council_turns', { council_code: councilCode })
+      .then((res) => setCouncilTurns(res.data.data))
+      .catch(() => {});
+  }, [councilCode]);
 
-  const handleSubmit = async (values, { setSubmitting }) => {
+  const fetchRows = useCallback(
+    async (model) => {
+      if (!councilCode) {
+        openSnackbar({ open: true, message: 'Chọn Hội đồng thi', variant: 'alert', alert: { color: 'warning' } });
+        return;
+      }
+      setLoading(true);
+      try {
+        const res = await gradingService.getAnswerKeys({
+          council_code: councilCode,
+          council_turn_code: councilTurnCode || undefined,
+          subject_id: subjectId || undefined,
+          question_type_id: questionTypeId || undefined,
+          page: model.page,
+          pageSize: model.pageSize
+        });
+        setRows(res.data.data.items);
+        setRowCount(res.data.data.total);
+        setHasSearched(true);
+      } catch (e) {
+        openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách', variant: 'alert', alert: { color: 'error' } });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [councilCode, councilTurnCode, subjectId, questionTypeId]
+  );
+
+  const handleViewData = () => {
+    const initial = { page: 0, pageSize: 20 };
+    setPaginationModel(initial);
+    fetchRows(initial);
+  };
+
+  const handlePaginationChange = (model) => {
+    setPaginationModel(model);
+    if (hasSearched) fetchRows(model);
+  };
+
+  // ---- Xem nội dung câu hỏi (icon mắt) ----
+  const handleView = async (row) => {
+    setViewLoading(true);
+    setViewDetail({ loading: true });
+    try {
+      const res = await gradingService.getAnswerKeyDetail(row.question_id);
+      setViewDetail(res.data.data);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Không tải được nội dung câu hỏi', variant: 'alert', alert: { color: 'error' } });
+      setViewDetail(null);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  // ---- Xem tiêu chí rubric (click vào Mã rubric ở cột Đáp án) ----
+  const handleViewRubric = async (row) => {
+    setViewRubric({ code: row.rubric_code, name: row.rubric_name });
+    try {
+      const res = await gradingService.getRubricCriterias(row.rubric_id);
+      setViewRubricCriterias(res.data.data);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Không tải được tiêu chí rubric', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  // ---- Sửa đáp án ----
+  const openEdit = async (row) => {
+    setEditing(row);
+    setEditDetail(null);
+    if (row.question_type_id === QUESTION_TYPE_ESSAY) {
+      setEditValues({ rubric_id: row.rubric_id || '' });
+      gradingService
+        .getRubrics({ subject_id: row.subject_id, pageSize: 200 })
+        .then((res) => setRubricOptions(res.data.data.items))
+        .catch(() => setRubricOptions([]));
+    } else if (row.question_type_id === QUESTION_TYPE_TNN) {
+      setEditValues({
+        tn_choices: row.answer_key ? row.answer_key.split(',').map((s) => s.trim()) : [],
+        question_mark_id: row.question_mark_id || ''
+      });
+    } else if (row.question_type_id === QUESTION_TYPE_TN1) {
+      setEditValues({ tn_choice: row.answer_key || '', question_mark_id: row.question_mark_id || '' });
+    } else {
+      setEditValues({
+        answer_key: row.answer_key || '',
+        answer_type: row.answer_type || 'INTEGER_NUMBER',
+        question_mark_id: row.question_mark_id || ''
+      });
+    }
+    if (row.question_type_id === QUESTION_TYPE_TN1 || row.question_type_id === QUESTION_TYPE_TNN) {
+      try {
+        const res = await gradingService.getAnswerKeyDetail(row.question_id);
+        setEditDetail(res.data.data);
+      } catch (e) {
+        openSnackbar({ open: true, message: 'Không tải được danh sách phương án', variant: 'alert', alert: { color: 'error' } });
+      }
+    }
+  };
+
+  const closeEdit = () => {
+    setEditing(null);
+    setEditDetail(null);
+    setConfirmSaveOpen(false);
+    setRequiresResetOpen(false);
+  };
+
+  const buildObjectivePayload = () => {
+    if (editing.question_type_id === QUESTION_TYPE_TNN) {
+      return { answer_key: (editValues.tn_choices || []).join(','), question_mark_id: editValues.question_mark_id };
+    }
+    if (editing.question_type_id === QUESTION_TYPE_TN1) {
+      return { answer_key: editValues.tn_choice, question_mark_id: editValues.question_mark_id };
+    }
+    return { answer_key: editValues.answer_key, answer_type: editValues.answer_type, question_mark_id: editValues.question_mark_id };
+  };
+
+  const doSaveObjective = async () => {
+    setConfirmSaveOpen(false);
+    setSaving(true);
     try {
       const res = await withLoading(
-        () => gradingService.updateAnswerKey(editing.question_id, values),
-        'Đang cập nhật đáp án... Vui lòng chờ'
+        () => gradingService.updateAnswerKey(editing.question_id, buildObjectivePayload()),
+        'Đang lưu đáp án... Vui lòng chờ'
       );
       openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
-      setEditing(null);
-      fetchRows();
+      closeEdit();
+      fetchRows(paginationModel);
     } catch (e) {
-      openSnackbar({ open: true, message: e?.message || 'Cập nhật thất bại', variant: 'alert', alert: { color: 'error' } });
+      openSnackbar({ open: true, message: e?.message || 'Lưu thất bại', variant: 'alert', alert: { color: 'error' } });
     } finally {
-      setSubmitting(false);
+      setSaving(false);
+    }
+  };
+
+  const doSaveEssay = async (forceReset) => {
+    setSaving(true);
+    try {
+      const res = await withLoading(
+        () =>
+          gradingService.updateAnswerKey(editing.question_id, {
+            rubric_id: editValues.rubric_id,
+            force_reset: forceReset || undefined
+          }),
+        'Đang lưu... Vui lòng chờ'
+      );
+      openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
+      closeEdit();
+      fetchRows(paginationModel);
+    } catch (e) {
+      if (e?.data?.requires_reset) {
+        setRequiresResetOpen(true);
+      } else {
+        openSnackbar({ open: true, message: e?.message || 'Lưu thất bại', variant: 'alert', alert: { color: 'error' } });
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveClick = () => {
+    if (editing.question_type_id === QUESTION_TYPE_ESSAY) {
+      doSaveEssay(false);
+    } else {
+      setConfirmSaveOpen(true);
     }
   };
 
   const columns = [
-    { field: 'question_id', headerName: 'ID câu hỏi', width: 100 },
+    { field: 'question_code', headerName: 'Mã câu hỏi', width: 160 },
     {
       field: 'subject_id',
       headerName: 'Môn thi',
-      width: 140,
+      width: 160,
       valueGetter: (value) => subjects.find((s) => s.id === value)?.name || value
     },
     {
       field: 'question_type_id',
       headerName: 'Loại câu hỏi',
-      width: 150,
-      valueGetter: (value) => QUESTION_TYPE_LABEL[value] || value
+      width: 190,
+      valueGetter: (value) => questionTypes.find((t) => t.id === value)?.name || value
     },
-    { field: 'answer_type', headerName: 'Kiểu đáp án', width: 150 },
-    { field: 'answer_key', headerName: 'Đáp án', flex: 1, minWidth: 150 },
+    {
+      field: 'answer_type',
+      headerName: 'Kiểu đáp án',
+      width: 170,
+      valueGetter: (value, row) =>
+        row.question_type_id === QUESTION_TYPE_TLN ? ANSWER_TYPE_OPTIONS.find((o) => o.value === value)?.label || value : '-'
+    },
+    {
+      field: 'answer_key',
+      headerName: 'Đáp án',
+      flex: 1,
+      minWidth: 180,
+      renderCell: (params) =>
+        params.row.question_type_id === QUESTION_TYPE_ESSAY ? (
+          <Link component="button" underline="hover" onClick={() => handleViewRubric(params.row)}>
+            {params.row.rubric_code || '(chưa gán rubric)'}
+          </Link>
+        ) : (
+          params.value
+        )
+    },
     {
       field: 'question_mark_id',
       headerName: 'Điểm',
       width: 100,
-      valueGetter: (value) => questionMarks.find((m) => m.id === value)?.value ?? value
+      valueGetter: (value, row) =>
+        row.question_type_id === QUESTION_TYPE_ESSAY ? '-' : questionMarks.find((m) => m.id === value)?.value ?? value
     },
     {
       field: 'actions',
       headerName: '',
-      width: 70,
+      width: 100,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <Tooltip title="Sửa đáp án">
-          <IconButton size="small" onClick={() => setEditing(params.row)}>
-            <EditOutlined />
-          </IconButton>
-        </Tooltip>
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="Xem câu hỏi">
+            <IconButton size="small" onClick={() => handleView(params.row)}>
+              <EyeOutlined />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Sửa đáp án">
+            <IconButton size="small" onClick={() => openEdit(params.row)}>
+              <EditOutlined />
+            </IconButton>
+          </Tooltip>
+        </Stack>
       )
     }
   ];
 
   return (
     <Stack spacing={2}>
-      <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2}>
+      <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={2} alignItems="center">
+        <TextField
+          select
+          size="small"
+          label="Hội đồng thi"
+          value={councilCode}
+          onChange={(e) => setCouncilCode(e.target.value)}
+          sx={{ minWidth: 240 }}
+        >
+          <MenuItem value="">-- Chọn hội đồng --</MenuItem>
+          {councils.map((c) => (
+            <MenuItem key={c.code} value={c.code}>
+              {c.desc || c.code}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          select
+          size="small"
+          label="Ca thi"
+          value={councilTurnCode}
+          onChange={(e) => setCouncilTurnCode(e.target.value)}
+          disabled={!councilCode}
+          sx={{ minWidth: 200 }}
+        >
+          <MenuItem value="">-- Tất cả ca thi --</MenuItem>
+          {councilTurns.map((t) => (
+            <MenuItem key={t.code} value={t.code}>
+              {t.name || t.code}
+            </MenuItem>
+          ))}
+        </TextField>
         <TextField
           select
           size="small"
           label="Môn thi"
           value={subjectId}
           onChange={(e) => setSubjectId(e.target.value)}
-          sx={{ minWidth: 200 }}
+          sx={{ minWidth: 180 }}
         >
-          <MenuItem value="">Tất cả</MenuItem>
+          <MenuItem value="">-- Tất cả môn thi --</MenuItem>
           {subjects.map((s) => (
             <MenuItem key={s.id} value={s.id}>
               {s.name}
@@ -151,97 +397,250 @@ const AnswerKeysTab = () => {
           ))}
         </TextField>
         <TextField
+          select
           size="small"
-          label="Mã ca thi"
-          value={councilTurnCode}
-          onChange={(e) => setCouncilTurnCode(e.target.value)}
+          label="Loại câu hỏi"
+          value={questionTypeId}
+          onChange={(e) => setQuestionTypeId(e.target.value)}
           sx={{ minWidth: 200 }}
-        />
+        >
+          <MenuItem value="">-- Tất cả loại --</MenuItem>
+          {questionTypes.map((t) => (
+            <MenuItem key={t.id} value={t.id}>
+              {t.name}
+            </MenuItem>
+          ))}
+        </TextField>
+        <Button variant="contained" onClick={handleViewData}>
+          Xem dữ liệu
+        </Button>
       </Stack>
-      <DataGrid
-        autoHeight
-        rows={rows}
-        getRowId={(row) => row.question_id}
-        columns={columns}
-        rowCount={rowCount}
-        loading={loading}
-        paginationMode="server"
-        paginationModel={paginationModel}
-        onPaginationModelChange={setPaginationModel}
-        pageSizeOptions={[10, 20, 50]}
-        disableRowSelectionOnClick
-      />
 
-      <Dialog open={!!editing} onClose={() => setEditing(null)} fullWidth maxWidth="sm">
-        {editing && (
-          <Formik
-            initialValues={{
-              answer_key: editing.answer_key || '',
-              answer_type: editing.answer_type || 'INTEGER_NUMBER',
-              question_mark_id: editing.question_mark_id || ''
-            }}
-            validationSchema={Yup.object().shape({
-              answer_key: Yup.string().max(255).required('Bắt buộc nhập đáp án'),
-              answer_type: Yup.string().required(),
-              question_mark_id: Yup.number().required('Bắt buộc chọn điểm')
-            })}
-            onSubmit={handleSubmit}
-          >
-            {({ values, errors, touched, handleBlur, handleChange, handleSubmit: submitForm, isSubmitting }) => (
-              <form noValidate onSubmit={submitForm}>
-                <DialogTitle>Sửa đáp án — câu #{editing.question_id}</DialogTitle>
-                <DialogContent>
-                  <Stack spacing={2} sx={{ mt: 1 }}>
-                    <Typography variant="body2" color="warning.main">
-                      Sửa đáp án sẽ tự động chấm lại toàn bộ bài đã có điểm cho câu này.
+      {!hasSearched ? (
+        <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
+          Chọn Hội đồng thi (bắt buộc), thu hẹp thêm nếu cần, rồi bấm &quot;Xem dữ liệu&quot;
+        </Typography>
+      ) : (
+        <DataGrid
+          autoHeight
+          rows={rows}
+          getRowId={(row) => row.question_id}
+          columns={columns}
+          rowCount={rowCount}
+          loading={loading}
+          paginationMode="server"
+          paginationModel={paginationModel}
+          onPaginationModelChange={handlePaginationChange}
+          pageSizeOptions={[10, 20, 50]}
+          disableRowSelectionOnClick
+        />
+      )}
+
+      {/* Popup xem nội dung câu hỏi */}
+      <Dialog open={!!viewDetail} onClose={() => setViewDetail(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Xem câu hỏi{viewDetail?.code ? ` — ${viewDetail.code}` : ''}</DialogTitle>
+        <DialogContent>
+          {viewLoading || !viewDetail || viewDetail.loading ? (
+            <Typography color="text.secondary">Đang tải...</Typography>
+          ) : (
+            <Stack spacing={1.5}>
+              {viewDetail.pre_content && <Box dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewDetail.pre_content) }} />}
+              <Box dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewDetail.content) }} />
+              {viewDetail.post_content && <Box dangerouslySetInnerHTML={{ __html: sanitizeHtml(viewDetail.post_content) }} />}
+              {viewDetail.options?.length > 0 && (
+                <Stack spacing={0.5} sx={{ mt: 1 }}>
+                  {viewDetail.options.map((o) => (
+                    <Typography key={o.index} variant="body2">
+                      <b>{o.index}.</b> {o.text}
                     </Typography>
+                  ))}
+                </Stack>
+              )}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewDetail(null)}>Đóng</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Popup xem tiêu chí rubric (chỉ xem) */}
+      <Dialog open={!!viewRubric} onClose={() => setViewRubric(null)} fullWidth maxWidth="sm">
+        <DialogTitle>Tiêu chí rubric — {viewRubric?.code} ({viewRubric?.name})</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1}>
+            {viewRubricCriterias.map((c) => (
+              <Box key={c.id} sx={{ p: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                <Typography variant="subtitle2">
+                  {c.code} — {c.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Điểm: {c.min_score} - {c.max_score} | Các mức: {c.scores}
+                </Typography>
+              </Box>
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewRubric(null)}>Đóng</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Sửa đáp án */}
+      <Dialog open={!!editing} onClose={closeEdit} fullWidth maxWidth="sm">
+        {editing && (
+          <>
+            <DialogTitle>Sửa đáp án — {editing.question_code}</DialogTitle>
+            <DialogContent>
+              <Stack spacing={2} sx={{ mt: 1 }}>
+                {editing.question_type_id === QUESTION_TYPE_TN1 && (
+                  <TextField
+                    fullWidth
+                    select
+                    label="Phương án đúng"
+                    value={editValues.tn_choice || ''}
+                    onChange={(e) => setEditValues((v) => ({ ...v, tn_choice: e.target.value }))}
+                  >
+                    {(editDetail?.options || []).map((o) => (
+                      <MenuItem key={o.index} value={String(o.index)}>
+                        {o.index}. {o.text}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+
+                {editing.question_type_id === QUESTION_TYPE_TNN && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">
+                      Phương án đúng (chọn nhiều)
+                    </Typography>
+                    <Select
+                      fullWidth
+                      multiple
+                      value={editValues.tn_choices || []}
+                      onChange={(e) => setEditValues((v) => ({ ...v, tn_choices: e.target.value }))}
+                      input={<OutlinedInput />}
+                      renderValue={(selected) => selected.join(', ')}
+                    >
+                      {(editDetail?.options || []).map((o) => (
+                        <MenuItem key={o.index} value={String(o.index)}>
+                          <Checkbox checked={(editValues.tn_choices || []).includes(String(o.index))} />
+                          <ListItemText primary={`${o.index}. ${o.text}`} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Box>
+                )}
+
+                {editing.question_type_id === QUESTION_TYPE_TLN && (
+                  <>
                     <TextField
                       fullWidth
                       label="Đáp án"
-                      name="answer_key"
-                      value={values.answer_key}
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      error={Boolean(touched.answer_key && errors.answer_key)}
-                      helperText={touched.answer_key && errors.answer_key}
+                      value={editValues.answer_key || ''}
+                      onChange={(e) => setEditValues((v) => ({ ...v, answer_key: e.target.value }))}
                     />
-                    {editing.question_type_id === 4 && (
-                      <TextField fullWidth select label="Kiểu đáp án" name="answer_type" value={values.answer_type} onChange={handleChange}>
-                        {ANSWER_TYPES.map((t) => (
-                          <MenuItem key={t} value={t}>
-                            {t}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    )}
                     <TextField
                       fullWidth
                       select
-                      label="Điểm"
-                      name="question_mark_id"
-                      value={values.question_mark_id}
-                      onChange={handleChange}
-                      error={Boolean(touched.question_mark_id && errors.question_mark_id)}
-                      helperText={touched.question_mark_id && errors.question_mark_id}
+                      label="Kiểu đáp án"
+                      value={editValues.answer_type || ''}
+                      onChange={(e) => setEditValues((v) => ({ ...v, answer_type: e.target.value }))}
                     >
-                      {questionMarks.map((m) => (
-                        <MenuItem key={m.id} value={m.id}>
-                          {m.value} ({m.name})
+                      {ANSWER_TYPE_OPTIONS.map((o) => (
+                        <MenuItem key={o.value} value={o.value}>
+                          {o.label}
                         </MenuItem>
                       ))}
                     </TextField>
-                  </Stack>
-                </DialogContent>
-                <DialogActions>
-                  <Button onClick={() => setEditing(null)}>Huỷ</Button>
-                  <Button type="submit" variant="contained" disabled={isSubmitting}>
-                    Lưu
-                  </Button>
-                </DialogActions>
-              </form>
-            )}
-          </Formik>
+                  </>
+                )}
+
+                {editing.question_type_id === QUESTION_TYPE_ESSAY && (
+                  <>
+                    <Typography variant="body2" color="warning.main">
+                      Câu tự luận không nhập đáp án — chọn rubric dùng để giám khảo chấm tay.
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      select
+                      label="Rubric"
+                      value={editValues.rubric_id || ''}
+                      onChange={(e) => setEditValues((v) => ({ ...v, rubric_id: e.target.value }))}
+                    >
+                      {rubricOptions.map((r) => (
+                        <MenuItem key={r.id} value={r.id}>
+                          {r.code} — {r.name}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </>
+                )}
+
+                {editing.question_type_id !== QUESTION_TYPE_ESSAY && (
+                  <TextField
+                    fullWidth
+                    select
+                    label="Điểm"
+                    value={editValues.question_mark_id || ''}
+                    onChange={(e) => setEditValues((v) => ({ ...v, question_mark_id: e.target.value }))}
+                  >
+                    {questionMarks.map((m) => (
+                      <MenuItem key={m.id} value={m.id}>
+                        {m.value} ({m.name})
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
+              </Stack>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={closeEdit}>Huỷ</Button>
+              <Button variant="contained" onClick={handleSaveClick} disabled={saving}>
+                Lưu đáp án
+              </Button>
+            </DialogActions>
+          </>
         )}
+      </Dialog>
+
+      {/* Xác nhận lưu (TN/TLN) — cảnh báo chấm lại */}
+      <Dialog open={confirmSaveOpen} onClose={() => setConfirmSaveOpen(false)}>
+        <DialogTitle>Xác nhận lưu đáp án</DialogTitle>
+        <DialogContent>
+          <Typography>Các bài đã có điểm cho câu này sẽ được tự động chấm lại theo đáp án mới. Bạn có chắc chắn muốn lưu?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmSaveOpen(false)}>Huỷ</Button>
+          <Button variant="contained" color="warning" onClick={doSaveObjective} disabled={saving}>
+            Xác nhận lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Xác nhận reset điểm (đổi rubric của câu đã có người chấm) */}
+      <Dialog open={requiresResetOpen} onClose={() => setRequiresResetOpen(false)}>
+        <DialogTitle>Câu này đã có giám khảo chấm điểm</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Đổi rubric sẽ <b>xoá toàn bộ điểm đã chấm</b> của câu này (mọi bài làm) vì tiêu chí rubric mới không còn khớp nghĩa với điểm cũ
+            — các bài này sẽ trở về trạng thái chờ chấm lại từ đầu. Bạn có chắc chắn muốn tiếp tục?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRequiresResetOpen(false)}>Huỷ</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              setRequiresResetOpen(false);
+              doSaveEssay(true);
+            }}
+            disabled={saving}
+          >
+            Xác nhận reset &amp; đổi rubric
+          </Button>
+        </DialogActions>
       </Dialog>
     </Stack>
   );
@@ -263,6 +662,8 @@ const RubricsTab = () => {
   const [editingRubric, setEditingRubric] = useState(null);
   const [criteriaRubric, setCriteriaRubric] = useState(null);
   const [criterias, setCriterias] = useState([]);
+  const [savingCriterias, setSavingCriterias] = useState(false);
+  const [criteriaRequiresResetOpen, setCriteriaRequiresResetOpen] = useState(false);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -308,17 +709,21 @@ const RubricsTab = () => {
     }
   };
 
-  const handleSaveCriterias = async () => {
+  const doSaveCriterias = async (forceReset) => {
+    setSavingCriterias(true);
     try {
-      const res = await withLoading(
-        () => gradingService.updateRubricCriterias(criteriaRubric.id, criterias),
-        'Đang lưu tiêu chí... Vui lòng chờ'
-      );
+      const res = await gradingService.updateRubricCriterias(criteriaRubric.id, criterias, forceReset);
       setCriterias(res.data.data);
       openSnackbar({ open: true, message: 'Đã lưu tiêu chí rubric', variant: 'alert', alert: { color: 'success' } });
       fetchRows();
     } catch (e) {
-      openSnackbar({ open: true, message: e?.message || 'Lưu thất bại', variant: 'alert', alert: { color: 'error' } });
+      if (e?.data?.requires_reset) {
+        setCriteriaRequiresResetOpen(true);
+      } else {
+        openSnackbar({ open: true, message: e?.message || 'Lưu thất bại', variant: 'alert', alert: { color: 'error' } });
+      }
+    } finally {
+      setSavingCriterias(false);
     }
   };
 
@@ -523,8 +928,33 @@ const RubricsTab = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setCriteriaRubric(null)}>Đóng</Button>
-          <Button variant="contained" onClick={handleSaveCriterias}>
+          <Button variant="contained" onClick={() => doSaveCriterias(false)} disabled={savingCriterias}>
             Lưu tiêu chí
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Xác nhận reset điểm (sửa tiêu chí của rubric đã có người chấm) */}
+      <Dialog open={criteriaRequiresResetOpen} onClose={() => setCriteriaRequiresResetOpen(false)}>
+        <DialogTitle>Rubric này đã có giám khảo chấm điểm</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Sửa tiêu chí sẽ <b>xoá toàn bộ điểm đã chấm</b> theo bộ tiêu chí cũ ở mọi câu đang dùng rubric này — các bài liên quan sẽ trở
+            về trạng thái chờ chấm lại từ đầu. Bạn có chắc chắn muốn tiếp tục?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCriteriaRequiresResetOpen(false)}>Huỷ</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              setCriteriaRequiresResetOpen(false);
+              doSaveCriterias(true);
+            }}
+            disabled={savingCriterias}
+          >
+            Xác nhận reset &amp; lưu tiêu chí
           </Button>
         </DialogActions>
       </Dialog>
@@ -540,8 +970,8 @@ const AnswerKeysPage = () => {
   return (
     <MainCard title="Đáp án & Rubric" content={false}>
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ px: 2, pt: 1 }}>
-        <Tab label="Đáp án trắc nghiệm / trả lời ngắn" />
-        <Tab label="Rubric tự luận" />
+        <Tab label="Đáp án / Rubric" />
+        <Tab label="Quản lý Rubric" />
       </Tabs>
       <Box sx={{ p: 2 }}>{tab === 0 ? <AnswerKeysTab /> : <RubricsTab />}</Box>
     </MainCard>

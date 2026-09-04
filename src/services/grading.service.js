@@ -17,6 +17,7 @@ const getPhachOverview = (params) => axios.get(`${BASE}/import/phach`, { params:
 
 // B2 — đáp án
 const getAnswerKeys = (params) => axios.get(`${BASE}/answer-keys`, { params: toListParams(params) });
+const getAnswerKeyDetail = (questionId) => axios.get(`${BASE}/answer-keys/${questionId}`);
 const updateAnswerKey = (questionId, payload) => axios.put(`${BASE}/answer-keys/${questionId}`, payload);
 
 // B2 — rubric + tiêu chí chấm tự luận
@@ -24,7 +25,8 @@ const getRubrics = (params) => axios.get(`${BASE}/rubrics`, { params: toListPara
 const createRubric = (payload) => axios.post(`${BASE}/rubrics`, payload);
 const updateRubric = (id, payload) => axios.put(`${BASE}/rubrics/${id}`, payload);
 const getRubricCriterias = (id) => axios.get(`${BASE}/rubrics/${id}/criterias`);
-const updateRubricCriterias = (id, criterias) => axios.put(`${BASE}/rubrics/${id}/criterias`, { criterias });
+const updateRubricCriterias = (id, criterias, forceReset) =>
+  axios.put(`${BASE}/rubrics/${id}/criterias`, { criterias, force_reset: forceReset || undefined });
 
 // B3 — chấm tự động (5 phạm vi)
 const autoMarkAll = () => axios.post(`${BASE}/auto-marking/all`);
@@ -70,6 +72,7 @@ const gradingService = {
   generatePhach,
   getPhachOverview,
   getAnswerKeys,
+  getAnswerKeyDetail,
   updateAnswerKey,
   getRubrics,
   createRubric,
