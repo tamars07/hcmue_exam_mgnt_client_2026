@@ -28,6 +28,7 @@ import { openSnackbar } from 'api/snackbar';
 import gradingService from 'services/grading.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import useSubjects from 'hooks/useSubjects';
+import useAuth from 'hooks/useAuth';
 
 // ==============================|| B4 - TÀI KHOẢN GIÁM KHẢO ||============================== //
 
@@ -35,6 +36,8 @@ const emptyValues = { code: '', name: '', password: '', subject_id: '' };
 
 const ExaminersPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.roles?.includes('ADMIN'));
   const subjects = useSubjects();
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
@@ -101,13 +104,17 @@ const ExaminersPage = () => {
       width: 160,
       valueGetter: (value) => subjects.find((s) => s.id === value)?.name || value
     },
-    {
-      field: 'password',
-      headerName: 'Mật khẩu',
-      width: 140,
-      sortable: false,
-      renderCell: ({ value }) => (showPassword ? value : '••••••••')
-    }
+    ...(isAdmin
+      ? [
+          {
+            field: 'password',
+            headerName: 'Mật khẩu',
+            width: 140,
+            sortable: false,
+            renderCell: ({ value }) => (showPassword ? value : '••••••••')
+          }
+        ]
+      : [])
   ];
 
   return (
@@ -150,10 +157,12 @@ const ExaminersPage = () => {
               </MenuItem>
             ))}
           </TextField>
-          <FormControlLabel
-            control={<Switch checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
-            label="Hiện mật khẩu"
-          />
+          {isAdmin && (
+            <FormControlLabel
+              control={<Switch checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
+              label="Hiện mật khẩu"
+            />
+          )}
         </Stack>
 
         {importResult && (

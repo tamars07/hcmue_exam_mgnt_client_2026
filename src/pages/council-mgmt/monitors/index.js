@@ -28,6 +28,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useAuth from 'hooks/useAuth';
 
 // ==============================|| TÀI KHOẢN CÁN BỘ COI THI / ĐIỂM TRƯỞNG - LIST ||============================== //
 
@@ -35,6 +36,8 @@ const emptyValues = { code: '', name: '', password: '', role_id: 4, organization
 
 const MonitorsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.roles?.includes('ADMIN'));
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -122,13 +125,17 @@ const MonitorsPage = () => {
   const columns = [
     { field: 'code', headerName: 'Tài khoản', width: 160 },
     { field: 'name', headerName: 'Họ tên', flex: 1, minWidth: 200 },
-    {
-      field: 'password',
-      headerName: 'Mật khẩu',
-      width: 120,
-      sortable: false,
-      renderCell: ({ value }) => (showPassword ? value : '••••••••')
-    },
+    ...(isAdmin
+      ? [
+          {
+            field: 'password',
+            headerName: 'Mật khẩu',
+            width: 120,
+            sortable: false,
+            renderCell: ({ value }) => (showPassword ? value : '••••••••')
+          }
+        ]
+      : []),
     {
       field: 'role_label',
       headerName: 'Vai trò',
@@ -201,10 +208,12 @@ const MonitorsPage = () => {
             <MenuItem value={4}>Cán bộ coi thi</MenuItem>
             <MenuItem value={7}>Điểm trưởng</MenuItem>
           </TextField>
-          <FormControlLabel
-            control={<Switch checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
-            label="Hiện mật khẩu"
-          />
+          {isAdmin && (
+            <FormControlLabel
+              control={<Switch checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
+              label="Hiện mật khẩu"
+            />
+          )}
         </Stack>
         <DataGrid
           autoHeight
