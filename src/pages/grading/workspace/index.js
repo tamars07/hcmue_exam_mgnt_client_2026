@@ -21,6 +21,7 @@ import {
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import gradingExaminerService from 'services/grading-examiner.service';
+import sanitizeHtml from 'utils/sanitizeHtml';
 
 const TABS = [
   { key: 'chua_cham', label: 'Chưa chấm', color: 'default' },
@@ -137,7 +138,7 @@ const GradingWorkspacePage = () => {
                     </Stack>
 
                     {q.question_content && (
-                      <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1 }} dangerouslySetInnerHTML={{ __html: q.question_content }} />
+                      <Box sx={{ bgcolor: 'grey.50', p: 2, borderRadius: 1 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(q.question_content) }} />
                     )}
 
                     <Box>
