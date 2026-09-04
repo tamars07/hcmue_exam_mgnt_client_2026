@@ -12,7 +12,8 @@ const importBak = (files, onUploadProgress) => {
   files.forEach((file) => formData.append('files[]', file));
   return axios.post(`${BASE}/import/bak`, formData, { headers: { 'Content-Type': 'multipart/form-data' }, onUploadProgress });
 };
-const generatePhach = (councilTurnCode) => axios.post(`${BASE}/import/generate-phach`, { council_turn_code: councilTurnCode });
+const generatePhach = (payload) => axios.post(`${BASE}/import/generate-phach`, payload);
+const getPhachOverview = (params) => axios.get(`${BASE}/import/phach`, { params: toListParams(params) });
 
 // B2 — đáp án
 const getAnswerKeys = (params) => axios.get(`${BASE}/answer-keys`, { params: toListParams(params) });
@@ -67,6 +68,7 @@ const downloadResultsDetailXlsx = (params) => axios.get(`${BASE}/results/detail.
 const gradingService = {
   importBak,
   generatePhach,
+  getPhachOverview,
   getAnswerKeys,
   updateAnswerKey,
   getRubrics,
