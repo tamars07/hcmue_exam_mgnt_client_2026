@@ -17,20 +17,40 @@ const getPhachOverview = (params) => axios.get(`${BASE}/import/phach`, { params:
 
 // B2 — đáp án
 const getAnswerKeys = (params) => axios.get(`${BASE}/answer-keys`, { params: toListParams(params) });
+const getAnswerKeyStats = (params) => axios.get(`${BASE}/answer-keys/stats`, { params });
 const getAnswerKeyDetail = (questionId) => axios.get(`${BASE}/answer-keys/${questionId}`);
 const updateAnswerKey = (questionId, payload) => axios.put(`${BASE}/answer-keys/${questionId}`, payload);
 const importAnswerKeysFromQuestionBank = (payload) => axios.post(`${BASE}/answer-keys/import/question-bank`, payload);
-const importAnswerKeysFromExamFile = (file, password) => {
+const importAnswerKeysFromExamFile = (file, password, scope) => {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('password', password);
+  formData.append('council_code', scope.council_code);
+  if (scope.council_turn_code) formData.append('council_turn_code', scope.council_turn_code);
   return axios.post(`${BASE}/answer-keys/import/exam-file`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 };
-const downloadAnswerKeyImportTemplate = () => axios.get(`${BASE}/answer-keys/import/template`, { responseType: 'blob' });
-const importAnswerKeysFromExcel = (file) => {
+const previewAnswerKeysFromExamFile = (file, password, scope) => {
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('password', password);
+  formData.append('council_code', scope.council_code);
+  if (scope.council_turn_code) formData.append('council_turn_code', scope.council_turn_code);
+  return axios.post(`${BASE}/answer-keys/import/exam-file/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+const downloadAnswerKeyImportTemplate = () => axios.get(`${BASE}/answer-keys/import/template`, { responseType: 'blob' });
+const importAnswerKeysFromExcel = (file, scope) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('council_code', scope.council_code);
+  if (scope.council_turn_code) formData.append('council_turn_code', scope.council_turn_code);
   return axios.post(`${BASE}/answer-keys/import/excel`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+const previewAnswerKeysFromExcel = (file, scope) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('council_code', scope.council_code);
+  if (scope.council_turn_code) formData.append('council_turn_code', scope.council_turn_code);
+  return axios.post(`${BASE}/answer-keys/import/excel/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 };
 
 // B2 — rubric + tiêu chí chấm tự luận
@@ -85,12 +105,15 @@ const gradingService = {
   generatePhach,
   getPhachOverview,
   getAnswerKeys,
+  getAnswerKeyStats,
   getAnswerKeyDetail,
   updateAnswerKey,
   importAnswerKeysFromQuestionBank,
   importAnswerKeysFromExamFile,
+  previewAnswerKeysFromExamFile,
   downloadAnswerKeyImportTemplate,
   importAnswerKeysFromExcel,
+  previewAnswerKeysFromExcel,
   getRubrics,
   createRubric,
   updateRubric,

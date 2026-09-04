@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -24,7 +25,16 @@ import {
   Typography
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { DownloadOutlined, EditOutlined, EyeOutlined, ImportOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import {
+  DownloadOutlined,
+  EditOutlined,
+  EyeOutlined,
+  FileExcelOutlined,
+  FileProtectOutlined,
+  PlusOutlined,
+  SyncOutlined,
+  UploadOutlined
+} from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -84,6 +94,7 @@ const AnswerKeysTab = () => {
   const [loading, setLoading] = useState(false);
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 20 });
   const [hasSearched, setHasSearched] = useState(false);
+  const [stats, setStats] = useState(null); // thống kê bao nhiêu câu đã có đáp án/rubric, bao nhiêu chưa
 
   const [questionMarks, setQuestionMarks] = useState([]);
   const [rubricOptions, setRubricOptions] = useState([]);
@@ -110,8 +121,12 @@ const AnswerKeysTab = () => {
   const [examFileDialogOpen, setExamFileDialogOpen] = useState(false);
   const [examFile, setExamFile] = useState(null);
   const [examFilePassword, setExamFilePassword] = useState('');
+  const [examFilePreview, setExamFilePreview] = useState(null);
+  const [previewingExamFile, setPreviewingExamFile] = useState(false);
   const [excelDialogOpen, setExcelDialogOpen] = useState(false);
   const [excelFile, setExcelFile] = useState(null);
+  const [excelPreview, setExcelPreview] = useState(null);
+  const [previewingExcel, setPreviewingExcel] = useState(false);
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -137,6 +152,16 @@ const AnswerKeysTab = () => {
       .catch(() => {});
   }, [councilCode]);
 
+  const currentScopeParams = useCallback(
+    () => ({
+      council_code: councilCode,
+      council_turn_code: councilTurnCode || undefined,
+      subject_id: subjectId || undefined,
+      question_type_id: questionTypeId || undefined
+    }),
+    [councilCode, councilTurnCode, subjectId, questionTypeId]
+  );
+
   const fetchRows = useCallback(
     async (model) => {
       if (!councilCode) {
@@ -145,14 +170,7 @@ const AnswerKeysTab = () => {
       }
       setLoading(true);
       try {
-        const res = await gradingService.getAnswerKeys({
-          council_code: councilCode,
-          council_turn_code: councilTurnCode || undefined,
-          subject_id: subjectId || undefined,
-          question_type_id: questionTypeId || undefined,
-          page: model.page,
-          pageSize: model.pageSize
-        });
+        const res = await gradingService.getAnswerKeys({ ...currentScopeParams(), page: model.page, pageSize: model.pageSize });
         setRows(res.data.data.items);
         setRowCount(res.data.data.total);
         setHasSearched(true);
@@ -162,13 +180,24 @@ const AnswerKeysTab = () => {
         setLoading(false);
       }
     },
-    [councilCode, councilTurnCode, subjectId, questionTypeId]
+    [councilCode, currentScopeParams]
   );
+
+  const fetchStats = useCallback(async () => {
+    if (!councilCode) return;
+    try {
+      const res = await gradingService.getAnswerKeyStats(currentScopeParams());
+      setStats(res.data.data);
+    } catch (e) {
+      setStats(null);
+    }
+  }, [councilCode, currentScopeParams]);
 
   const handleViewData = () => {
     const initial = { page: 0, pageSize: 20 };
     setPaginationModel(initial);
     fetchRows(initial);
+    fetchStats();
   };
 
   const handlePaginationChange = (model) => {
@@ -176,17 +205,13 @@ const AnswerKeysTab = () => {
     if (hasSearched) fetchRows(model);
   };
 
-  const currentScopeParams = () => ({
-    council_code: councilCode,
-    council_turn_code: councilTurnCode || undefined,
-    subject_id: subjectId || undefined,
-    question_type_id: questionTypeId || undefined
-  });
-
   const applyImportResult = (result, message) => {
     setImportResult(result);
     openSnackbar({ open: true, message, variant: 'alert', alert: { color: 'success' } });
-    if (hasSearched) fetchRows(paginationModel);
+    if (hasSearched) {
+      fetchRows(paginationModel);
+      fetchStats();
+    }
   };
 
   // ---- Cách 1: đồng bộ từ ngân hàng câu hỏi (theo phạm vi đang lọc) ----
@@ -202,7 +227,10 @@ const AnswerKeysTab = () => {
     setConfirmImportQBOpen(false);
     setImporting(true);
     try {
-      const res = await gradingService.importAnswerKeysFromQuestionBank(currentScopeParams());
+      const res = await withLoading(
+        () => gradingService.importAnswerKeysFromQuestionBank(currentScopeParams()),
+        'Đang đồng bộ đáp án từ ngân hàng câu hỏi... Vui lòng chờ'
+      );
       applyImportResult(res.data.data, res.data.message);
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Đồng bộ thất bại', variant: 'alert', alert: { color: 'error' } });
@@ -211,19 +239,65 @@ const AnswerKeysTab = () => {
     }
   };
 
+  const requireCouncilSelected = () => {
+    if (!councilCode) {
+      openSnackbar({ open: true, message: 'Chọn Hội đồng thi trước khi nhập đáp án', variant: 'alert', alert: { color: 'warning' } });
+      return false;
+    }
+    return true;
+  };
+
+  const importScope = () => ({ council_code: councilCode, council_turn_code: councilTurnCode || undefined });
+
+  const openExamFileDialog = () => {
+    if (!requireCouncilSelected()) return;
+    setExamFileDialogOpen(true);
+  };
+
+  const openExcelDialog = () => {
+    if (!requireCouncilSelected()) return;
+    setExcelDialogOpen(true);
+  };
+
   // ---- Cách 2: nhập từ file đề thi mã hoá ----
+  const doPreviewExamFile = async () => {
+    if (!examFile || !examFilePassword) {
+      openSnackbar({ open: true, message: 'Chọn file và nhập mật khẩu', variant: 'alert', alert: { color: 'warning' } });
+      return;
+    }
+    if (!requireCouncilSelected()) return;
+    setPreviewingExamFile(true);
+    setExamFilePreview(null);
+    try {
+      const res = await withLoading(
+        () => gradingService.previewAnswerKeysFromExamFile(examFile, examFilePassword, importScope()),
+        'Đang kiểm tra file... Vui lòng chờ'
+      );
+      setExamFilePreview(res.data.data);
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Không đọc được file', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setPreviewingExamFile(false);
+    }
+  };
+
   const doImportFromExamFile = async () => {
     if (!examFile || !examFilePassword) {
       openSnackbar({ open: true, message: 'Chọn file và nhập mật khẩu', variant: 'alert', alert: { color: 'warning' } });
       return;
     }
+    if (!requireCouncilSelected()) return;
     setImporting(true);
     try {
-      const res = await gradingService.importAnswerKeysFromExamFile(examFile, examFilePassword);
+      const res = await withLoading(
+        () => gradingService.importAnswerKeysFromExamFile(examFile, examFilePassword, importScope()),
+        'Đang nhập đáp án từ file đề thi... Vui lòng chờ'
+      );
       applyImportResult(res.data.data, res.data.message);
       setExamFileDialogOpen(false);
       setExamFile(null);
       setExamFilePassword('');
+      setExamFilePreview(null);
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Nhập từ file thất bại', variant: 'alert', alert: { color: 'error' } });
     } finally {
@@ -241,17 +315,43 @@ const AnswerKeysTab = () => {
     }
   };
 
+  const doPreviewExcel = async () => {
+    if (!excelFile) {
+      openSnackbar({ open: true, message: 'Chọn file Excel', variant: 'alert', alert: { color: 'warning' } });
+      return;
+    }
+    if (!requireCouncilSelected()) return;
+    setPreviewingExcel(true);
+    setExcelPreview(null);
+    try {
+      const res = await withLoading(
+        () => gradingService.previewAnswerKeysFromExcel(excelFile, importScope()),
+        'Đang kiểm tra file... Vui lòng chờ'
+      );
+      setExcelPreview(res.data.data);
+    } catch (e) {
+      setExcelPreview({ structureError: e?.message || 'File không hợp lệ' });
+    } finally {
+      setPreviewingExcel(false);
+    }
+  };
+
   const doImportFromExcel = async () => {
     if (!excelFile) {
       openSnackbar({ open: true, message: 'Chọn file Excel', variant: 'alert', alert: { color: 'warning' } });
       return;
     }
+    if (!requireCouncilSelected()) return;
     setImporting(true);
     try {
-      const res = await gradingService.importAnswerKeysFromExcel(excelFile);
+      const res = await withLoading(
+        () => gradingService.importAnswerKeysFromExcel(excelFile, importScope()),
+        'Đang nhập đáp án từ Excel... Vui lòng chờ'
+      );
       applyImportResult(res.data.data, res.data.message);
       setExcelDialogOpen(false);
       setExcelFile(null);
+      setExcelPreview(null);
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Nhập từ Excel thất bại', variant: 'alert', alert: { color: 'error' } });
     } finally {
@@ -427,7 +527,7 @@ const AnswerKeysTab = () => {
       headerName: 'Điểm',
       width: 100,
       valueGetter: (value, row) =>
-        row.question_type_id === QUESTION_TYPE_ESSAY ? '-' : questionMarks.find((m) => m.id === value)?.value ?? value
+        row.question_type_id === QUESTION_TYPE_ESSAY ? '-' : (questionMarks.find((m) => m.id === value)?.value ?? value)
     },
     {
       field: 'actions',
@@ -521,26 +621,52 @@ const AnswerKeysTab = () => {
         </Button>
       </Stack>
 
-      <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
-        <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center', mr: 1 }}>
-          Import đáp án:
-        </Typography>
-        <Button size="small" variant="outlined" startIcon={<ImportOutlined />} onClick={handleImportFromQuestionBank} disabled={importing}>
-          Từ ngân hàng câu hỏi
-        </Button>
-        <Button size="small" variant="outlined" startIcon={<UploadOutlined />} onClick={() => setExamFileDialogOpen(true)} disabled={importing}>
-          Từ file đề thi
-        </Button>
-        <Button size="small" variant="outlined" startIcon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+      <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1} justifyContent="space-between">
+        <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
+          <Typography variant="caption" color="text.secondary" sx={{ alignSelf: 'center', mr: 1 }}>
+            Import đáp án:
+          </Typography>
+          <Button
+            size="small"
+            variant="outlined"
+            color="primary"
+            startIcon={<SyncOutlined />}
+            onClick={handleImportFromQuestionBank}
+            disabled={importing}
+          >
+            Từ ngân hàng câu hỏi
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="secondary"
+            startIcon={<FileProtectOutlined />}
+            onClick={openExamFileDialog}
+            disabled={importing}
+          >
+            Từ file đề thi
+          </Button>
+          <Button
+            size="small"
+            variant="outlined"
+            color="success"
+            startIcon={<FileExcelOutlined />}
+            onClick={openExcelDialog}
+            disabled={importing}
+          >
+            Từ Excel
+          </Button>
+        </Stack>
+        <Button size="small" variant="outlined" color="inherit" startIcon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
           Tải file mẫu Excel
-        </Button>
-        <Button size="small" variant="outlined" startIcon={<UploadOutlined />} onClick={() => setExcelDialogOpen(true)} disabled={importing}>
-          Từ Excel
         </Button>
       </Stack>
 
       {importResult && (
-        <Alert severity={importResult.errors?.length || importResult.skipped?.length ? 'warning' : 'success'} onClose={() => setImportResult(null)}>
+        <Alert
+          severity={importResult.errors?.length || importResult.skipped?.length ? 'warning' : 'success'}
+          onClose={() => setImportResult(null)}
+        >
           Đã cập nhật <b>{importResult.updated_count}</b> câu.
           {importResult.skipped?.length > 0 && (
             <Box component="div" sx={{ mt: 0.5 }}>
@@ -569,19 +695,28 @@ const AnswerKeysTab = () => {
           Chọn Hội đồng thi (bắt buộc), thu hẹp thêm nếu cần, rồi bấm &quot;Xem dữ liệu&quot;
         </Typography>
       ) : (
-        <DataGrid
-          autoHeight
-          rows={rows}
-          getRowId={(row) => row.question_id}
-          columns={columns}
-          rowCount={rowCount}
-          loading={loading}
-          paginationMode="server"
-          paginationModel={paginationModel}
-          onPaginationModelChange={handlePaginationChange}
-          pageSizeOptions={[10, 20, 50]}
-          disableRowSelectionOnClick
-        />
+        <>
+          {stats && (
+            <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
+              <Chip label={`Tổng: ${stats.total} câu`} />
+              <Chip color="success" variant="outlined" label={`Đã có đáp án/rubric: ${stats.with_answer}`} />
+              <Chip color="warning" variant="outlined" label={`Chưa có đáp án/rubric: ${stats.without_answer}`} />
+            </Stack>
+          )}
+          <DataGrid
+            autoHeight
+            rows={rows}
+            getRowId={(row) => row.question_id}
+            columns={columns}
+            rowCount={rowCount}
+            loading={loading}
+            paginationMode="server"
+            paginationModel={paginationModel}
+            onPaginationModelChange={handlePaginationChange}
+            pageSizeOptions={[10, 20, 50]}
+            disableRowSelectionOnClick
+          />
+        </>
       )}
 
       {/* Popup xem nội dung câu hỏi */}
@@ -614,7 +749,9 @@ const AnswerKeysTab = () => {
 
       {/* Popup xem tiêu chí rubric (chỉ xem) */}
       <Dialog open={!!viewRubric} onClose={() => setViewRubric(null)} fullWidth maxWidth="sm">
-        <DialogTitle>Tiêu chí rubric — {viewRubric?.code} ({viewRubric?.name})</DialogTitle>
+        <DialogTitle>
+          Tiêu chí rubric — {viewRubric?.code} ({viewRubric?.name})
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={1}>
             {viewRubricCriterias.map((c) => (
@@ -796,8 +933,8 @@ const AnswerKeysTab = () => {
         <DialogTitle>Đồng bộ đáp án từ ngân hàng câu hỏi</DialogTitle>
         <DialogContent>
           <Typography>
-            Áp lại đáp án hiện có trong ngân hàng câu hỏi (questions.answer_key) cho toàn bộ câu trắc nghiệm/trả lời ngắn trong phạm vi
-            đang lọc, chấm lại các bài đã có điểm. Câu tự luận không áp dụng (không có gì để đồng bộ). Bạn có chắc chắn muốn tiếp tục?
+            Áp lại đáp án hiện có trong ngân hàng câu hỏi (questions.answer_key) cho toàn bộ câu trắc nghiệm/trả lời ngắn trong phạm vi đang
+            lọc, chấm lại các bài đã có điểm. Câu tự luận không áp dụng (không có gì để đồng bộ). Bạn có chắc chắn muốn tiếp tục?
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -814,20 +951,61 @@ const AnswerKeysTab = () => {
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Dùng cùng file đề thi mã hoá (.dat) và mật khẩu như khi nhập đề — chỉ đồng bộ đáp án của các câu ĐÃ TỒN TẠI trong hệ
-              thống, không tạo câu/đề mới. Câu tự luận không áp dụng.
+              Dùng cùng file đề thi mã hoá (.dat) và mật khẩu như khi nhập đề — chỉ đồng bộ đáp án của các câu ĐÃ TỒN TẠI trong hệ thống,
+              không tạo câu/đề mới. Câu tự luận không áp dụng.
             </Typography>
             <Button component="label" variant="outlined" startIcon={<UploadOutlined />} sx={{ alignSelf: 'flex-start' }}>
               {examFile ? examFile.name : 'Chọn file .dat'}
-              <input type="file" accept=".dat" hidden onChange={(e) => setExamFile(e.target.files?.[0] || null)} />
+              <input
+                type="file"
+                accept=".dat"
+                hidden
+                onChange={(e) => {
+                  setExamFile(e.target.files?.[0] || null);
+                  setExamFilePreview(null);
+                }}
+              />
             </Button>
             <TextField
               fullWidth
               type="password"
               label="Mật khẩu file"
               value={examFilePassword}
-              onChange={(e) => setExamFilePassword(e.target.value)}
+              onChange={(e) => {
+                setExamFilePassword(e.target.value);
+                setExamFilePreview(null);
+              }}
             />
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<EyeOutlined />}
+              onClick={doPreviewExamFile}
+              disabled={previewingExamFile || !examFile || !examFilePassword}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Xem trước
+            </Button>
+            {examFilePreview && (
+              <Alert
+                severity={examFilePreview.with_answer_key === 0 ? 'error' : examFilePreview.without_answer_key > 0 ? 'warning' : 'success'}
+              >
+                File có <b>{examFilePreview.total_in_file}</b> câu ({examFilePreview.essay_count} câu tự luận không áp dụng), khớp với hệ
+                thống <b>{examFilePreview.matched_in_system}</b> câu — trong đó <b>{examFilePreview.with_answer_key}</b> câu CÓ đáp án,{' '}
+                <b>{examFilePreview.without_answer_key}</b> câu KHÔNG có đáp án trong file này.
+                {examFilePreview.with_answer_key === 0 && examFilePreview.matched_in_system > 0 && (
+                  <Box component="div" sx={{ mt: 0.5, fontWeight: 600 }}>
+                    File này không mang dữ liệu đáp án nào — có thể bạn đang chọn nhầm file đề gốc (phân phối cho thí sinh) thay vì file đáp
+                    án.
+                  </Box>
+                )}
+                {examFilePreview.missing_answer_key_samples?.length > 0 && (
+                  <Box component="div" sx={{ mt: 0.5 }}>
+                    Ví dụ câu chưa có đáp án: {examFilePreview.missing_answer_key_samples.join(', ')}
+                  </Box>
+                )}
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -836,6 +1014,7 @@ const AnswerKeysTab = () => {
               setExamFileDialogOpen(false);
               setExamFile(null);
               setExamFilePassword('');
+              setExamFilePreview(null);
             }}
           >
             Huỷ
@@ -860,9 +1039,51 @@ const AnswerKeysTab = () => {
                 type="file"
                 accept=".xlsx,.xls,.csv"
                 hidden
-                onChange={(e) => setExcelFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  setExcelFile(e.target.files?.[0] || null);
+                  setExcelPreview(null);
+                }}
               />
             </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              startIcon={<EyeOutlined />}
+              onClick={doPreviewExcel}
+              disabled={previewingExcel || !excelFile}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              Kiểm tra file
+            </Button>
+            {excelPreview?.structureError && <Alert severity="error">{excelPreview.structureError}</Alert>}
+            {excelPreview && !excelPreview.structureError && (
+              <Alert severity={excelPreview.error_count > 0 ? 'warning' : 'success'}>
+                File hợp lệ <b>{excelPreview.valid_count}</b> dòng
+                {excelPreview.error_count > 0 && (
+                  <>
+                    , lỗi <b>{excelPreview.error_count}</b> dòng
+                  </>
+                )}
+                {excelPreview.would_skip_count > 0 && (
+                  <>
+                    , sẽ bị bỏ qua <b>{excelPreview.would_skip_count}</b> câu tự luận đã có giám khảo chấm
+                  </>
+                )}
+                .
+                {excelPreview.errors?.length > 0 && (
+                  <Box component="ul" sx={{ m: '4px 0 0', pl: 2 }}>
+                    {excelPreview.errors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </Box>
+                )}
+                {excelPreview.would_skip_samples?.length > 0 && (
+                  <Box component="div" sx={{ mt: 0.5 }}>
+                    Câu sẽ bị bỏ qua: {excelPreview.would_skip_samples.join(', ')}
+                  </Box>
+                )}
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>
@@ -870,6 +1091,7 @@ const AnswerKeysTab = () => {
             onClick={() => {
               setExcelDialogOpen(false);
               setExcelFile(null);
+              setExcelPreview(null);
             }}
           >
             Huỷ
@@ -1176,8 +1398,8 @@ const RubricsTab = () => {
         <DialogTitle>Rubric này đã có giám khảo chấm điểm</DialogTitle>
         <DialogContent>
           <Typography>
-            Sửa tiêu chí sẽ <b>xoá toàn bộ điểm đã chấm</b> theo bộ tiêu chí cũ ở mọi câu đang dùng rubric này — các bài liên quan sẽ trở
-            về trạng thái chờ chấm lại từ đầu. Bạn có chắc chắn muốn tiếp tục?
+            Sửa tiêu chí sẽ <b>xoá toàn bộ điểm đã chấm</b> theo bộ tiêu chí cũ ở mọi câu đang dùng rubric này — các bài liên quan sẽ trở về
+            trạng thái chờ chấm lại từ đầu. Bạn có chắc chắn muốn tiếp tục?
           </Typography>
         </DialogContent>
         <DialogActions>
