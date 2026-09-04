@@ -13,6 +13,7 @@ import authReducer from 'contexts/auth-reducer/auth';
 // project import
 import Loader from 'components/Loader';
 import axios from 'utils/axios';
+import safeJsonParse from 'utils/safeJsonParse';
 
 const chance = new Chance();
 
@@ -135,8 +136,8 @@ export const JWTProvider = ({ children }) => {
     //  localStorage.setItem('remainingTime', remainingTime);
     //compare login user email with examinee code (aka last user email)
     if(localStorage.getItem('examinee')){
-      let cur_user = JSON.parse(localStorage.getItem('user'))
-      let last_user = JSON.parse(localStorage.getItem('examinee'))
+      let cur_user = safeJsonParse(localStorage.getItem('user'), {})
+      let last_user = safeJsonParse(localStorage.getItem('examinee'), {})
       if(cur_user.id != last_user.user_id){
         localStorage.removeItem('examinee');
         localStorage.removeItem('answers');

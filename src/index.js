@@ -28,6 +28,7 @@ import '@fontsource/public-sans/700.css';
 // project import
 import App from './App';
 // import { ConfigProvider } from 'contexts/ConfigContext';
+import ErrorBoundary from 'components/ErrorBoundary';
 import reportWebVitals from './reportWebVitals';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -36,7 +37,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
   // <ConfigProvider>
-  <App />
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
   // </ConfigProvider>
 );
 
