@@ -1,7 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 
 // material-ui
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
+  MenuItem,
+  Stack,
+  Switch,
+  TextField
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { PlusOutlined, UploadOutlined } from '@ant-design/icons';
 
@@ -30,6 +43,7 @@ const ExaminersPage = () => {
   const [subjectFilter, setSubjectFilter] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -86,6 +100,13 @@ const ExaminersPage = () => {
       headerName: 'Môn thi',
       width: 160,
       valueGetter: (value) => subjects.find((s) => s.id === value)?.name || value
+    },
+    {
+      field: 'password',
+      headerName: 'Mật khẩu',
+      width: 140,
+      sortable: false,
+      renderCell: ({ value }) => (showPassword ? value : '••••••••')
     }
   ];
 
@@ -113,21 +134,27 @@ const ExaminersPage = () => {
       }
     >
       <Stack spacing={2}>
-        <TextField
-          select
-          size="small"
-          label="Môn thi"
-          value={subjectFilter}
-          onChange={(e) => setSubjectFilter(e.target.value)}
-          sx={{ maxWidth: 240 }}
-        >
-          <MenuItem value="">Tất cả</MenuItem>
-          {subjects.map((s) => (
-            <MenuItem key={s.id} value={s.id}>
-              {s.name}
-            </MenuItem>
-          ))}
-        </TextField>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <TextField
+            select
+            size="small"
+            label="Môn thi"
+            value={subjectFilter}
+            onChange={(e) => setSubjectFilter(e.target.value)}
+            sx={{ maxWidth: 240 }}
+          >
+            <MenuItem value="">Tất cả</MenuItem>
+            {subjects.map((s) => (
+              <MenuItem key={s.id} value={s.id}>
+                {s.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <FormControlLabel
+            control={<Switch checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
+            label="Hiện mật khẩu"
+          />
+        </Stack>
 
         {importResult && (
           <Alert severity={importResult.errors?.length ? 'warning' : 'success'} onClose={() => setImportResult(null)}>

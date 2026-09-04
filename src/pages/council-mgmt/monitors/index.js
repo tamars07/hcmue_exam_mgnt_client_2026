@@ -44,6 +44,7 @@ const MonitorsPage = () => {
   const [organizations, setOrganizations] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     councilMgmtService
@@ -121,7 +122,13 @@ const MonitorsPage = () => {
   const columns = [
     { field: 'code', headerName: 'Tài khoản', width: 160 },
     { field: 'name', headerName: 'Họ tên', flex: 1, minWidth: 200 },
-    { field: 'password', headerName: 'Mật khẩu', width: 120 },
+    {
+      field: 'password',
+      headerName: 'Mật khẩu',
+      width: 120,
+      sortable: false,
+      renderCell: ({ value }) => (showPassword ? value : '••••••••')
+    },
     {
       field: 'role_label',
       headerName: 'Vai trò',
@@ -194,6 +201,10 @@ const MonitorsPage = () => {
             <MenuItem value={4}>Cán bộ coi thi</MenuItem>
             <MenuItem value={7}>Điểm trưởng</MenuItem>
           </TextField>
+          <FormControlLabel
+            control={<Switch checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
+            label="Hiện mật khẩu"
+          />
         </Stack>
         <DataGrid
           autoHeight
