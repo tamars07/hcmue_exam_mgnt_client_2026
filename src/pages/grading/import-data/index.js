@@ -147,15 +147,31 @@ const ImportDataPage = () => {
 
   const overviewColumns = [
     { field: 'examinee_test_code', headerName: 'Mã phách', width: 220, valueGetter: (value) => value || '(chưa có)' },
-    { field: 'examinee_code', headerName: 'Mã thí sinh', width: 160 },
     {
       field: 'subject_id',
       headerName: 'Môn thi',
       width: 180,
       valueGetter: (value) => subjects.find((s) => s.id === value)?.name || value
     },
-    { field: 'council_turn_code', headerName: 'Ca thi', flex: 1, minWidth: 200 }
+    { field: 'council_turn_code', headerName: 'Ca thi', width: 200 },
+    {
+      field: 'phach_generated_at',
+      headerName: 'Thời điểm tạo mã phách',
+      width: 200,
+      valueGetter: (value) => (value ? new Date(value).toLocaleString('vi-VN') : '-')
+    }
   ];
+
+  const overviewTitle = (() => {
+    const parts = [`Hội đồng thi ${councils.find((c) => c.code === councilCode)?.desc || councilCode}`];
+    if (councilTurnCode) {
+      parts.push(`Ca thi ${councilTurns.find((t) => t.code === councilTurnCode)?.name || councilTurnCode}`);
+    }
+    if (subjectId) {
+      parts.push(`Môn thi ${subjects.find((s) => s.id === subjectId)?.name || subjectId}`);
+    }
+    return `Xem mã phách của ${parts.join(' - ')}`;
+  })();
 
   return (
     <Stack spacing={3}>
@@ -275,7 +291,7 @@ const ImportDataPage = () => {
       </Typography>
 
       <Dialog open={overviewOpen} onClose={() => setOverviewOpen(false)} fullWidth maxWidth="md">
-        <DialogTitle>Danh sách mã phách</DialogTitle>
+        <DialogTitle>{overviewTitle}</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
             {overviewData && (
