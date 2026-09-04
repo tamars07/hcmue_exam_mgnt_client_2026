@@ -103,6 +103,9 @@ const ImportDataPage = () => {
       );
       setPhachSummary(res.data.data);
       openSnackbar({ open: true, message: res.data.message || 'Đã sinh mã phách', variant: 'alert', alert: { color: 'success' } });
+      if (overviewOpen) {
+        fetchOverview(overviewPaginationModel);
+      }
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Sinh mã phách thất bại', variant: 'alert', alert: { color: 'error' } });
     }
@@ -294,13 +297,18 @@ const ImportDataPage = () => {
         <DialogTitle>{overviewTitle}</DialogTitle>
         <DialogContent>
           <Stack spacing={2}>
-            {overviewData && (
-              <Stack direction="row" spacing={2} flexWrap="wrap" rowGap={1}>
-                <Chip label={`Tổng số bài: ${overviewData.stats.total}`} />
-                <Chip color="success" label={`Đã có mã phách: ${overviewData.stats.with_phach}`} />
-                <Chip color="warning" label={`Chưa có mã phách: ${overviewData.stats.without_phach}`} />
-              </Stack>
-            )}
+            <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center" flexWrap="wrap" rowGap={1}>
+              {overviewData && (
+                <Stack direction="row" spacing={1} flexWrap="wrap" rowGap={1}>
+                  <Chip label={`Tổng số bài: ${overviewData.stats.total}`} />
+                  <Chip color="success" label={`Đã có mã phách: ${overviewData.stats.with_phach}`} />
+                  <Chip color="warning" label={`Chưa có mã phách: ${overviewData.stats.without_phach}`} />
+                </Stack>
+              )}
+              <Button variant="contained" size="small" onClick={handleGeneratePhach}>
+                Tạo mã phách
+              </Button>
+            </Stack>
             <DataGrid
               autoHeight
               rows={overviewData?.items || []}
