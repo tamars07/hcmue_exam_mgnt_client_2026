@@ -6,10 +6,11 @@ import {
   ImportOutlined,
   FileTextOutlined,
   CheckCircleOutlined,
-  TeamOutlined,
+  EditOutlined,
   UsergroupAddOutlined,
   ScheduleOutlined,
   WarningOutlined,
+  FunctionOutlined,
   BarChartOutlined
 } from '@ant-design/icons';
 
@@ -18,10 +19,11 @@ const icons = {
   ImportOutlined,
   FileTextOutlined,
   CheckCircleOutlined,
-  TeamOutlined,
+  EditOutlined,
   UsergroupAddOutlined,
   ScheduleOutlined,
   WarningOutlined,
+  FunctionOutlined,
   BarChartOutlined
 };
 
@@ -51,31 +53,32 @@ const grading = {
     },
     {
       id: 'grading-auto-marking',
-      title: <FormattedMessage id="grading-auto-marking" defaultMessage="Chấm tự động" />,
+      title: <FormattedMessage id="grading-auto-marking" defaultMessage="Chấm thi tự động" />,
       type: 'item',
       url: '/grading/auto-marking',
       icon: icons.CheckCircleOutlined
     },
     {
-      id: 'grading-examiners',
-      title: <FormattedMessage id="grading-examiners" defaultMessage="Tài khoản giám khảo" />,
-      type: 'item',
-      url: '/grading/examiners',
-      icon: icons.TeamOutlined
-    },
-    {
-      id: 'grading-examiner-pairs',
-      title: <FormattedMessage id="grading-examiner-pairs" defaultMessage="Cặp giám khảo" />,
-      type: 'item',
-      url: '/grading/examiner-pairs',
-      icon: icons.UsergroupAddOutlined
-    },
-    {
-      id: 'grading-assignments',
-      title: <FormattedMessage id="grading-assignments" defaultMessage="Phân bài chấm" />,
-      type: 'item',
-      url: '/grading/assignments',
-      icon: icons.ScheduleOutlined
+      id: 'grading-manual-marking',
+      title: <FormattedMessage id="grading-manual-marking" defaultMessage="Chấm thi thủ công" />,
+      type: 'collapse',
+      icon: icons.EditOutlined,
+      children: [
+        {
+          id: 'grading-examiner-pairs',
+          title: <FormattedMessage id="grading-examiner-pairs" defaultMessage="Tạo cặp chấm thi" />,
+          type: 'item',
+          url: '/grading/examiner-pairs',
+          icon: icons.UsergroupAddOutlined
+        },
+        {
+          id: 'grading-assignments',
+          title: <FormattedMessage id="grading-assignments" defaultMessage="Phân công chấm thi" />,
+          type: 'item',
+          url: '/grading/assignments',
+          icon: icons.ScheduleOutlined
+        }
+      ]
     },
     {
       id: 'grading-deviations',
@@ -85,11 +88,26 @@ const grading = {
       icon: icons.WarningOutlined
     },
     {
-      id: 'grading-results',
-      title: <FormattedMessage id="grading-results" defaultMessage="Bảng điểm" />,
-      type: 'item',
-      url: '/grading/results',
-      icon: icons.BarChartOutlined
+      id: 'grading-scoreboard',
+      title: <FormattedMessage id="grading-scoreboard" defaultMessage="Bảng điểm" />,
+      type: 'collapse',
+      icon: icons.BarChartOutlined,
+      children: [
+        {
+          id: 'grading-score-formulas',
+          title: <FormattedMessage id="grading-score-formulas" defaultMessage="Công thức tính điểm" />,
+          type: 'item',
+          url: '/grading/score-formulas',
+          icon: icons.FunctionOutlined
+        },
+        {
+          id: 'grading-results',
+          title: <FormattedMessage id="grading-results" defaultMessage="Tổng hợp điểm" />,
+          type: 'item',
+          url: '/grading/results',
+          icon: icons.BarChartOutlined
+        }
+      ]
     }
   ]
 };

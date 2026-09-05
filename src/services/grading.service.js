@@ -69,14 +69,9 @@ const regradeExaminee = (examineeTestCode) => axios.post(`${BASE}/auto-marking/e
 const overrideAutoMarkingResult = (answerKeyId, isCorrect) =>
   axios.put(`${BASE}/auto-marking/answer-keys/${answerKeyId}/override`, { is_correct: isCorrect });
 
-// B4 — tài khoản giám khảo
+// B4 đã gộp vào "Quản lý tài khoản cán bộ" (council-mgmt.service.js) — chỉ còn lấy danh sách giám
+// khảo theo môn thi, dùng nội bộ cho B5 (ghép cặp)/B7 (gán giám khảo thứ 3).
 const getExaminers = (params) => axios.get(`${BASE}/examiners`, { params: toListParams(params) });
-const createExaminer = (payload) => axios.post(`${BASE}/examiners`, payload);
-const importExaminers = (file) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  return axios.post(`${BASE}/examiners/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-};
 
 // B5 — cặp giám khảo
 const getExaminerPairs = (params) => axios.get(`${BASE}/examiner-pairs`, { params: toListParams(params) });
@@ -94,10 +89,19 @@ const getDeviations = (params) => axios.get(`${BASE}/deviations`, { params: toLi
 const getDeviationDetail = (stateId) => axios.get(`${BASE}/deviations/${stateId}`);
 const assignThirdExaminer = (stateId, payload) => axios.post(`${BASE}/deviations/${stateId}/assign-third-examiner`, payload);
 
-// B8 — công thức điểm + bảng điểm
-const getScoreFormula = (subjectId) => axios.get(`${BASE}/score-formulas/${subjectId}`);
-const updateScoreFormula = (subjectId, payload) => axios.put(`${BASE}/score-formulas/${subjectId}`, payload);
+// B8 — Bảng điểm: Công thức tính điểm (gắn với 1 Cấu trúc đề thi) + Tổng hợp điểm
+const getScoreFormulaTestForms = () => axios.get(`${BASE}/score-formulas/test-forms`);
+const getScoreFormulaTestFormParts = (testFormId) => axios.get(`${BASE}/score-formulas/test-forms/${testFormId}/parts`);
+const getScoreFormulas = (params) => axios.get(`${BASE}/score-formulas`, { params: toListParams(params) });
+const getScoreFormula = (id) => axios.get(`${BASE}/score-formulas/${id}`);
+const createScoreFormula = (payload) => axios.post(`${BASE}/score-formulas`, payload);
+const updateScoreFormula = (id, payload) => axios.put(`${BASE}/score-formulas/${id}`, payload);
+const deleteScoreFormula = (id) => axios.delete(`${BASE}/score-formulas/${id}`);
+
+const getResultsSubjects = (params) => axios.get(`${BASE}/results/subjects`, { params });
 const getResultsSummary = (params) => axios.get(`${BASE}/results/summary`, { params });
+const getResultDetail = (examineeTestCode) => axios.get(`${BASE}/results/${examineeTestCode}/detail`);
+const aggregateResults = (payload) => axios.post(`${BASE}/results/aggregate`, payload);
 const downloadResultsSummaryXlsx = (params) => axios.get(`${BASE}/results/summary.xlsx`, { params, responseType: 'blob' });
 const downloadResultsDetailXlsx = (params) => axios.get(`${BASE}/results/detail.xlsx`, { params, responseType: 'blob' });
 
@@ -126,8 +130,6 @@ const gradingService = {
   regradeExaminee,
   overrideAutoMarkingResult,
   getExaminers,
-  createExaminer,
-  importExaminers,
   getExaminerPairs,
   createExaminerPair,
   autoPairExaminers,
@@ -138,9 +140,17 @@ const gradingService = {
   getDeviations,
   getDeviationDetail,
   assignThirdExaminer,
+  getScoreFormulaTestForms,
+  getScoreFormulaTestFormParts,
+  getScoreFormulas,
   getScoreFormula,
+  createScoreFormula,
   updateScoreFormula,
+  deleteScoreFormula,
+  getResultsSubjects,
   getResultsSummary,
+  getResultDetail,
+  aggregateResults,
   downloadResultsSummaryXlsx,
   downloadResultsDetailXlsx
 };

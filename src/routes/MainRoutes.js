@@ -37,10 +37,10 @@ const ChairmanLogsPage = Loadable(lazy(() => import('pages/chairman/logs')));
 const GradingImportDataPage = Loadable(lazy(() => import('pages/grading/import-data')));
 const GradingAnswerKeysPage = Loadable(lazy(() => import('pages/grading/answer-keys')));
 const GradingAutoMarkingPage = Loadable(lazy(() => import('pages/grading/auto-marking')));
-const GradingExaminersPage = Loadable(lazy(() => import('pages/grading/examiners')));
 const GradingExaminerPairsPage = Loadable(lazy(() => import('pages/grading/examiner-pairs')));
 const GradingAssignmentsPage = Loadable(lazy(() => import('pages/grading/assignments')));
 const GradingDeviationsPage = Loadable(lazy(() => import('pages/grading/deviations')));
+const GradingScoreFormulasPage = Loadable(lazy(() => import('pages/grading/score-formulas')));
 const GradingResultsPage = Loadable(lazy(() => import('pages/grading/results')));
 const GradingWorkspacePage = Loadable(lazy(() => import('pages/grading/workspace')));
 
@@ -146,14 +146,6 @@ const MainRoutes = {
           )
         },
         {
-          path: 'grading/examiners',
-          element: (
-            <GradingAdminGuard>
-              <GradingExaminersPage />
-            </GradingAdminGuard>
-          )
-        },
-        {
           path: 'grading/examiner-pairs',
           element: (
             <GradingAdminGuard>
@@ -174,6 +166,14 @@ const MainRoutes = {
           element: (
             <GradingAdminGuard>
               <GradingDeviationsPage />
+            </GradingAdminGuard>
+          )
+        },
+        {
+          path: 'grading/score-formulas',
+          element: (
+            <GradingAdminGuard>
+              <GradingScoreFormulasPage />
             </GradingAdminGuard>
           )
         },
