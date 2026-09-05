@@ -25,6 +25,12 @@ const getBackups = (id) => axios.get(`${BASE}/exam-databases/${id}/backups`);
 const downloadBackup = (id, backupId) => axios.get(`${BASE}/exam-databases/${id}/backups/${backupId}/download`, { responseType: 'blob' });
 const deleteBackup = (id, backupId) => axios.delete(`${BASE}/exam-databases/${id}/backups/${backupId}`);
 
+// Tài khoản ADMIN của 1 DB kỳ thi bất kỳ (không cần đặt DB đó làm active)
+const getAdminAccounts = (id) => axios.get(`${BASE}/exam-databases/${id}/admin-accounts`);
+const createAdminAccount = (id, data) => axios.post(`${BASE}/exam-databases/${id}/admin-accounts`, data);
+const updateAdminAccount = (id, monitorId, data) => axios.put(`${BASE}/exam-databases/${id}/admin-accounts/${monitorId}`, data);
+const deleteAdminAccount = (id, monitorId) => axios.delete(`${BASE}/exam-databases/${id}/admin-accounts/${monitorId}`);
+
 // SQL table import
 const previewSqlImport = (id, formData) =>
   axios.post(`${BASE}/exam-databases/${id}/sql-import/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -44,6 +50,10 @@ const systemAdminService = {
   archiveExamDatabase,
   unarchiveExamDatabase,
   deleteExamDatabase,
+  getAdminAccounts,
+  createAdminAccount,
+  updateAdminAccount,
+  deleteAdminAccount,
   runBackup,
   restoreBackup,
   getBackups,

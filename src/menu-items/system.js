@@ -2,10 +2,10 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { DatabaseOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, IdcardOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined } from '@ant-design/icons';
 
 // icons
-const icons = { DatabaseOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined };
+const icons = { DatabaseOutlined, IdcardOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined };
 
 // ==============================|| MENU ITEMS - SUPER ADMIN (SYSTEM) ||============================== //
 // Menu riêng cho khu vực /system — không đi qua getMenuItems()/lọc theo role như menu-items/index.js
@@ -23,6 +23,13 @@ const system = {
       type: 'item',
       url: '/system/exam-databases',
       icon: icons.DatabaseOutlined
+    },
+    {
+      id: 'system-admin-accounts',
+      title: <FormattedMessage id="system-admin-accounts" defaultMessage="Tài khoản ADMIN" />,
+      type: 'item',
+      url: '/system/admin-accounts',
+      icon: icons.IdcardOutlined
     },
     {
       id: 'system-exam-config',

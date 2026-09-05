@@ -8,6 +8,7 @@ import SuperAdminGuestGuard from 'utils/route-guard/SuperAdminGuestGuard';
 
 const SystemLogin = Loadable(lazy(() => import('pages/system/login')));
 const ExamDatabasesPage = Loadable(lazy(() => import('pages/system/exam-databases')));
+const AdminAccountsPage = Loadable(lazy(() => import('pages/system/admin-accounts')));
 const ExamConfigPage = Loadable(lazy(() => import('pages/system/exam-config')));
 const SystemActivityLogsPage = Loadable(lazy(() => import('pages/system/activity-logs')));
 
@@ -37,6 +38,10 @@ const SystemRoutes = {
         {
           path: 'exam-databases',
           element: <ExamDatabasesPage />
+        },
+        {
+          path: 'admin-accounts',
+          element: <AdminAccountsPage />
         },
         {
           path: 'exam-config',
