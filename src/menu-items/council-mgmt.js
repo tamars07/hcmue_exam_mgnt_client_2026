@@ -37,18 +37,18 @@ const councilMgmt = {
       icon: icons.BankOutlined
     },
     {
-      id: 'examinees',
-      title: <FormattedMessage id="examinees" defaultMessage="Danh sách thí sinh" />,
-      type: 'item',
-      url: '/council-mgmt/examinees',
-      icon: icons.TeamOutlined
-    },
-    {
       id: 'monitors',
-      title: <FormattedMessage id="monitors" defaultMessage="Tài khoản cán bộ coi thi" />,
+      title: <FormattedMessage id="monitors" defaultMessage="Tài khoản cán bộ" />,
       type: 'item',
       url: '/council-mgmt/monitors',
       icon: icons.IdcardOutlined
+    },
+    {
+      id: 'examinees',
+      title: <FormattedMessage id="examinees" defaultMessage="Tài khoản thí sinh" />,
+      type: 'item',
+      url: '/council-mgmt/examinees',
+      icon: icons.TeamOutlined
     },
     {
       id: 'activity-logs',

@@ -62,11 +62,17 @@ const importExamineesCommit = (payload) => axios.post(`${BASE}/examinees/import/
 // Lookups (dropdown)
 const getLookup = (type, params) => axios.get(`${BASE}/lookups/${type}`, { params });
 
-// Monitors (tài khoản Cán bộ coi thi + Điểm trưởng)
+// Monitors — "Quản lý tài khoản cán bộ" (Điểm trưởng + Cán bộ coi thi + Cán bộ chấm thi, gộp chung)
 const getMonitors = (params) => axios.get(`${BASE}/monitors`, { params: toListParams(params) });
 const createMonitor = (data) => axios.post(`${BASE}/monitors`, data);
 const updateMonitor = (id, data) => axios.put(`${BASE}/monitors/${id}`, data);
 const deleteMonitor = (id) => axios.delete(`${BASE}/monitors/${id}`);
+const downloadMonitorImportTemplate = () => axios.get(`${BASE}/monitors/import/template`, { responseType: 'blob' });
+const importMonitors = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return axios.post(`${BASE}/monitors/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
 
 // Nhật ký hệ thống (mọi vai trò, trong phạm vi DB kỳ thi đang active)
 const getActivityLogs = (params) => axios.get(`${BASE}/logs`, { params: toListParams(params) });
@@ -104,6 +110,8 @@ const councilMgmtService = {
   createMonitor,
   updateMonitor,
   deleteMonitor,
+  downloadMonitorImportTemplate,
+  importMonitors,
   getActivityLogs,
   getActivityLogActions
 };

@@ -174,7 +174,7 @@ const ExamineesPage = () => {
 
   return (
     <MainCard
-      title="Danh sách thí sinh"
+      title="Tài khoản thí sinh"
       secondary={
         <Button variant="contained" startIcon={<UploadOutlined />} onClick={() => setImportOpen(true)}>
           Import từ Excel
