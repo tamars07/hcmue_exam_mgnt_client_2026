@@ -95,17 +95,20 @@ const ResultsPage = () => {
       .getLookup('council_turns', { council_code: value })
       .then((res) => setCouncilTurns(res.data.data))
       .catch(() => {});
+    // Chưa chọn Ca thi = lấy toàn bộ ca thi trong hội đồng, nên đã nạp được môn thi ngay từ đây
+    gradingService
+      .getResultsSubjects({ council_code: value })
+      .then((res) => setSubjects(res.data.data))
+      .catch(() => {});
   };
 
   const handleTurnChange = (value) => {
     setCouncilTurnCode(value);
     setSubjectId('');
-    setSubjects([]);
     setScoreFormulaId('');
     setFormulas([]);
-    if (!value) return;
     gradingService
-      .getResultsSubjects({ council_code: councilCode, council_turn_code: value })
+      .getResultsSubjects({ council_code: councilCode, council_turn_code: value || undefined })
       .then((res) => setSubjects(res.data.data))
       .catch(() => {});
   };
@@ -123,8 +126,8 @@ const ResultsPage = () => {
 
   const scopeParams = useCallback(
     () => ({
-      council_code: councilCode || undefined,
-      council_turn_code: councilTurnCode,
+      council_code: councilCode,
+      council_turn_code: councilTurnCode || undefined,
       subject_id: subjectId || undefined
     }),
     [councilCode, councilTurnCode, subjectId]
@@ -138,13 +141,14 @@ const ResultsPage = () => {
 
   const fetchResults = useCallback(
     async (model) => {
-      if (!councilTurnCode) {
-        openSnackbar({ open: true, message: 'Chọn Hội đồng thi và Ca thi', variant: 'alert', alert: { color: 'warning' } });
+      if (!councilCode) {
+        openSnackbar({ open: true, message: 'Chọn Hội đồng thi', variant: 'alert', alert: { color: 'warning' } });
         return;
       }
       setLoading(true);
       try {
-        const res = await gradingService.getResultsSummary({ ...scopeParams(), page: model.page, pageSize: model.pageSize });
+        const pageSize = model.pageSize === -1 ? Math.max(rowCount, 1) : model.pageSize;
+        const res = await gradingService.getResultsSummary({ ...scopeParams(), page: model.page, pageSize });
         applyListResult(res.data.data);
       } catch (e) {
         openSnackbar({ open: true, message: e?.message || 'Không tải được bảng điểm', variant: 'alert', alert: { color: 'error' } });
@@ -152,7 +156,7 @@ const ResultsPage = () => {
         setLoading(false);
       }
     },
-    [councilTurnCode, scopeParams]
+    [councilCode, scopeParams, rowCount]
   );
 
   const handleViewResults = () => {
@@ -168,10 +172,10 @@ const ResultsPage = () => {
 
   const handleAggregate = async () => {
     setConfirmAggregate(false);
-    if (!councilTurnCode || !subjectId || !scoreFormulaId) {
+    if (!councilCode || !subjectId || !scoreFormulaId) {
       return openSnackbar({
         open: true,
-        message: 'Chọn Hội đồng thi, Ca thi, Môn thi và Công thức tính điểm',
+        message: 'Chọn Hội đồng thi, Môn thi và Công thức tính điểm',
         variant: 'alert',
         alert: { color: 'warning' }
       });
@@ -181,7 +185,7 @@ const ResultsPage = () => {
         () =>
           gradingService.aggregateResults({
             council_code: councilCode,
-            council_turn_code: councilTurnCode,
+            council_turn_code: councilTurnCode || undefined,
             subject_id: subjectId,
             score_formula_id: scoreFormulaId
           }),
@@ -203,19 +207,19 @@ const ResultsPage = () => {
         () => gradingService.downloadResultsSummaryXlsx({ ...scopeParams(), with_phach: withPhach ? 1 : 0 }),
         'Đang xuất file... Vui lòng chờ'
       );
-      downloadBlob(res.data, `bang-diem-tong-hop-${councilTurnCode}.xlsx`);
+      downloadBlob(res.data, `bang-diem-tong-hop-${councilTurnCode || councilCode}.xlsx`);
     } catch (e) {
       openSnackbar({ open: true, message: 'Xuất file thất bại', variant: 'alert', alert: { color: 'error' } });
     }
   };
 
   const handleExportDetail = async () => {
-    if (!councilTurnCode) {
-      return openSnackbar({ open: true, message: 'Chọn Hội đồng thi và Ca thi', variant: 'alert', alert: { color: 'warning' } });
+    if (!councilCode) {
+      return openSnackbar({ open: true, message: 'Chọn Hội đồng thi', variant: 'alert', alert: { color: 'warning' } });
     }
     try {
       const res = await withLoading(() => gradingService.downloadResultsDetailXlsx(scopeParams()), 'Đang xuất file... Vui lòng chờ');
-      downloadBlob(res.data, `bang-diem-chi-tiet-${councilTurnCode}.xlsx`);
+      downloadBlob(res.data, `bang-diem-chi-tiet-${councilTurnCode || councilCode}.xlsx`);
     } catch (e) {
       openSnackbar({ open: true, message: 'Xuất file thất bại', variant: 'alert', alert: { color: 'error' } });
     }
@@ -287,9 +291,10 @@ const ResultsPage = () => {
             value={councilTurnCode}
             onChange={(e) => handleTurnChange(e.target.value)}
             disabled={!councilCode}
+            helperText="Bỏ trống = toàn bộ ca thi"
             sx={{ minWidth: 180 }}
           >
-            <MenuItem value="">-- Chọn ca thi --</MenuItem>
+            <MenuItem value="">-- Tất cả ca thi --</MenuItem>
             {councilTurns.map((t) => (
               <MenuItem key={t.code} value={t.code}>
                 {t.name || t.code}
@@ -314,7 +319,7 @@ const ResultsPage = () => {
             label="Môn thi (để tổng hợp điểm)"
             value={subjectId}
             onChange={(e) => handleSubjectChange(e.target.value)}
-            disabled={!councilTurnCode}
+            disabled={!councilCode}
             sx={{ minWidth: 200 }}
           >
             <MenuItem value="">-- Chọn môn thi --</MenuItem>
@@ -353,8 +358,8 @@ const ResultsPage = () => {
 
         {!hasSearched ? (
           <Typography color="text.secondary" align="center" sx={{ py: 6 }}>
-            Chọn Hội đồng thi + Ca thi rồi bấm &quot;Xem bảng điểm&quot;, hoặc chọn thêm Môn thi + Công thức tính điểm để &quot;Tổng hợp
-            điểm&quot;
+            Chọn Hội đồng thi (Ca thi tuỳ chọn — bỏ trống lấy toàn bộ) rồi bấm &quot;Xem bảng điểm&quot;, hoặc chọn thêm Môn thi + Công thức
+            tính điểm để &quot;Tổng hợp điểm&quot;
           </Typography>
         ) : (
           <DataGrid
@@ -367,7 +372,7 @@ const ResultsPage = () => {
             paginationMode="server"
             paginationModel={paginationModel}
             onPaginationModelChange={handlePaginationChange}
-            pageSizeOptions={[10, 20, 50]}
+            pageSizeOptions={[10, 20, 50, { value: -1, label: 'Tất cả' }]}
             disableRowSelectionOnClick
           />
         )}
@@ -378,8 +383,9 @@ const ResultsPage = () => {
         <DialogTitle>Tổng hợp điểm</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ mb: 2 }}>
-            Thao tác sẽ tính lại điểm tổng hợp cho toàn bộ bài thi môn đã chọn trong ca thi này theo công thức đã chọn, ghi đè điểm tổng hợp
-            hiện có (nếu đã từng tổng hợp trước đó).
+            Thao tác sẽ tính lại điểm tổng hợp cho toàn bộ bài thi môn đã chọn trong{' '}
+            {councilTurnCode ? 'ca thi này' : 'toàn bộ hội đồng thi này (mọi ca thi)'} theo công thức đã chọn, ghi đè điểm tổng hợp hiện có
+            (nếu đã từng tổng hợp trước đó).
           </Alert>
           <Typography>Bạn có chắc chắn muốn tiếp tục?</Typography>
         </DialogContent>
