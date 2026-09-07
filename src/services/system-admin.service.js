@@ -36,6 +36,31 @@ const previewSqlImport = (id, formData) =>
   axios.post(`${BASE}/exam-databases/${id}/sql-import/preview`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 const commitSqlImport = (id, payload) => axios.post(`${BASE}/exam-databases/${id}/sql-import/commit`, payload);
 
+// Kho dữ liệu dùng chung — Địa điểm thi
+const getMasterOrganizations = () => axios.get(`${BASE}/master-organizations`);
+const createMasterOrganization = (data) => axios.post(`${BASE}/master-organizations`, data);
+const updateMasterOrganization = (id, data) => axios.put(`${BASE}/master-organizations/${id}`, data);
+const deleteMasterOrganization = (id) => axios.delete(`${BASE}/master-organizations/${id}`);
+
+// Kho dữ liệu dùng chung — Phòng thi
+const getMasterRooms = (organizationId) => axios.get(`${BASE}/master-rooms`, { params: { master_organization_id: organizationId } });
+const createMasterRoom = (data) => axios.post(`${BASE}/master-rooms`, data);
+const updateMasterRoom = (id, data) => axios.put(`${BASE}/master-rooms/${id}`, data);
+const deleteMasterRoom = (id) => axios.delete(`${BASE}/master-rooms/${id}`);
+
+// Kho dữ liệu dùng chung — Điểm trưởng
+const getMasterMonitors = (organizationId) =>
+  axios.get(`${BASE}/master-monitors`, { params: organizationId ? { master_organization_id: organizationId } : {} });
+const createMasterMonitor = (data) => axios.post(`${BASE}/master-monitors`, data);
+const updateMasterMonitor = (id, data) => axios.put(`${BASE}/master-monitors/${id}`, data);
+const deleteMasterMonitor = (id) => axios.delete(`${BASE}/master-monitors/${id}`);
+const activateMasterMonitor = (id) => axios.put(`${BASE}/master-monitors/${id}/activate`);
+const regenerateMasterMonitorPassword = (id) => axios.put(`${BASE}/master-monitors/${id}/regenerate-password`);
+
+// Đồng bộ kho dữ liệu dùng chung vào 1 DB kỳ thi đã tồn tại
+const syncMasterData = (examDatabaseId, organizationIds) =>
+  axios.post(`${BASE}/exam-databases/${examDatabaseId}/sync-master-data`, { organization_ids: organizationIds });
+
 // Nhật ký thao tác Super Admin
 const getActivityLogs = (params) => axios.get(`${BASE}/activity-logs`, { params });
 const getActivityLogActions = () => axios.get(`${BASE}/activity-logs/actions`);
@@ -61,6 +86,21 @@ const systemAdminService = {
   deleteBackup,
   previewSqlImport,
   commitSqlImport,
+  getMasterOrganizations,
+  createMasterOrganization,
+  updateMasterOrganization,
+  deleteMasterOrganization,
+  getMasterRooms,
+  createMasterRoom,
+  updateMasterRoom,
+  deleteMasterRoom,
+  getMasterMonitors,
+  createMasterMonitor,
+  updateMasterMonitor,
+  deleteMasterMonitor,
+  activateMasterMonitor,
+  regenerateMasterMonitorPassword,
+  syncMasterData,
   getActivityLogs,
   getActivityLogActions
 };

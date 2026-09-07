@@ -2,10 +2,28 @@
 import { FormattedMessage } from 'react-intl';
 
 // assets
-import { DatabaseOutlined, IdcardOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined } from '@ant-design/icons';
+import {
+  DatabaseOutlined,
+  IdcardOutlined,
+  SettingOutlined,
+  FileSearchOutlined,
+  LoginOutlined,
+  EnvironmentOutlined,
+  HomeOutlined,
+  TeamOutlined
+} from '@ant-design/icons';
 
 // icons
-const icons = { DatabaseOutlined, IdcardOutlined, SettingOutlined, FileSearchOutlined, LoginOutlined };
+const icons = {
+  DatabaseOutlined,
+  IdcardOutlined,
+  SettingOutlined,
+  FileSearchOutlined,
+  LoginOutlined,
+  EnvironmentOutlined,
+  HomeOutlined,
+  TeamOutlined
+};
 
 // ==============================|| MENU ITEMS - SUPER ADMIN (SYSTEM) ||============================== //
 // Menu riêng cho khu vực /system — không đi qua getMenuItems()/lọc theo role như menu-items/index.js
@@ -37,6 +55,27 @@ const system = {
       type: 'item',
       url: '/system/exam-config',
       icon: icons.SettingOutlined
+    },
+    {
+      id: 'system-organizations',
+      title: <FormattedMessage id="system-organizations" defaultMessage="Địa điểm thi" />,
+      type: 'item',
+      url: '/system/organizations',
+      icon: icons.EnvironmentOutlined
+    },
+    {
+      id: 'system-rooms',
+      title: <FormattedMessage id="system-rooms" defaultMessage="Phòng thi" />,
+      type: 'item',
+      url: '/system/rooms',
+      icon: icons.HomeOutlined
+    },
+    {
+      id: 'system-monitors',
+      title: <FormattedMessage id="system-monitors" defaultMessage="Cán bộ" />,
+      type: 'item',
+      url: '/system/monitors',
+      icon: icons.TeamOutlined
     },
     {
       id: 'system-activity-logs',

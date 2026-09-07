@@ -1,44 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 
 // material-ui
-import {
-  Button,
-  Chip,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-  IconButton,
-  InputAdornment,
-  MenuItem,
-  Stack,
-  Switch,
-  TextField,
-  Tooltip
-} from '@mui/material';
+import { Alert, Chip, MenuItem, Stack, TextField } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-
-// third-party
-import { Formik } from 'formik';
-import * as Yup from 'yup';
 
 // project import
 import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
-import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
-// ==============================|| ROOMS - LIST ||============================== //
-
-const emptyValues = { organization_code: '', name: '', code: '', no_slots: 0, desc: '', status: true };
-
-// Mã phòng mặc định = {mã địa điểm thi}.{tên phòng}, chỉ áp dụng khi thêm mới và chưa mở khoá sửa tay.
-const buildRoomCode = (organizationCode, name) => [organizationCode, name].filter(Boolean).join('.');
+// ==============================|| ROOMS - LIST (READ-ONLY) ||============================== //
+// Thêm/sửa/xoá Phòng thi đã chuyển hẳn sang kho dữ liệu dùng chung ở Quản trị hệ thống — trang này
+// chỉ còn xem, tránh 2 nơi cùng ghi gây sai lệch dữ liệu giữa các DB kỳ thi.
 
 const RoomsPage = () => {
-  const { withLoading } = useLoadingOverlay();
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -46,9 +21,6 @@ const RoomsPage = () => {
   const [search, setSearch] = useState('');
   const [organizationFilter, setOrganizationFilter] = useState('');
   const [organizations, setOrganizations] = useState([]);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState(null);
-  const [codeLocked, setCodeLocked] = useState(true);
 
   useEffect(() => {
     councilMgmtService
@@ -79,49 +51,6 @@ const RoomsPage = () => {
     fetchRows();
   }, [fetchRows]);
 
-  const handleOpenCreate = () => {
-    setEditing(null);
-    setCodeLocked(true);
-    setDialogOpen(true);
-  };
-
-  const handleOpenEdit = (row) => {
-    setEditing(row);
-    setCodeLocked(true);
-    setDialogOpen(true);
-  };
-
-  const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá phòng thi "${row.name}"?`)) return;
-    try {
-      await withLoading(() => councilMgmtService.deleteRoom(row.code), 'Đang xoá phòng thi... Vui lòng chờ');
-      openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
-      fetchRows();
-    } catch (e) {
-      openSnackbar({ open: true, message: e?.message || 'Xoá thất bại', variant: 'alert', alert: { color: 'error' } });
-    }
-  };
-
-  const handleSubmit = async (values, { setSubmitting, setErrors }) => {
-    try {
-      await withLoading(async () => {
-        if (editing) {
-          await councilMgmtService.updateRoom(editing.code, values);
-        } else {
-          await councilMgmtService.createRoom(values);
-        }
-      }, 'Đang lưu phòng thi... Vui lòng chờ');
-      openSnackbar({ open: true, message: 'Lưu thành công', variant: 'alert', alert: { color: 'success' } });
-      setDialogOpen(false);
-      fetchRows();
-    } catch (e) {
-      if (e?.data) setErrors(Object.fromEntries(Object.entries(e.data).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
-      openSnackbar({ open: true, message: e?.message || 'Lưu thất bại', variant: 'alert', alert: { color: 'error' } });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const columns = [
     { field: 'code', headerName: 'Mã phòng', width: 120 },
     { field: 'name', headerName: 'Tên phòng', flex: 1, minWidth: 160 },
@@ -133,40 +62,16 @@ const RoomsPage = () => {
       headerName: 'Trạng thái',
       width: 130,
       renderCell: (params) => <Chip label={params.value ? 'Sử dụng' : 'Ẩn'} color={params.value ? 'success' : 'default'} size="small" />
-    },
-    {
-      field: 'actions',
-      headerName: '',
-      width: 100,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Sửa">
-            <IconButton size="small" onClick={() => handleOpenEdit(params.row)}>
-              <EditOutlined />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Xoá">
-            <IconButton size="small" color="error" onClick={() => handleDelete(params.row)}>
-              <DeleteOutlined />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      )
     }
   ];
 
   return (
-    <MainCard
-      title="Phòng thi"
-      secondary={
-        <Button variant="contained" startIcon={<PlusOutlined />} onClick={handleOpenCreate}>
-          Thêm phòng thi
-        </Button>
-      }
-    >
+    <MainCard title="Phòng thi">
       <Stack spacing={2}>
+        <Alert severity="info">
+          Phòng thi được quản lý tập trung ở <strong>Quản trị hệ thống &gt; Phòng thi</strong> — nơi đây chỉ để xem, đồng bộ lại khi có thay
+          đổi.
+        </Alert>
         <Stack direction="row" spacing={2}>
           <TextField
             size="small"
@@ -211,133 +116,6 @@ const RoomsPage = () => {
           disableRowSelectionOnClick
         />
       </Stack>
-
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} fullWidth maxWidth="sm">
-        <Formik
-          enableReinitialize
-          initialValues={editing || emptyValues}
-          validationSchema={Yup.object().shape({
-            code: Yup.string().max(50).required('Bắt buộc nhập mã'),
-            name: Yup.string().max(50).required('Bắt buộc nhập tên'),
-            no_slots: Yup.number().min(0).required('Bắt buộc nhập số máy'),
-            organization_code: Yup.string().required('Bắt buộc chọn địa điểm thi')
-          })}
-          onSubmit={handleSubmit}
-        >
-          {({ values, errors, touched, handleBlur, handleChange, handleSubmit: submitForm, isSubmitting, setFieldValue }) => (
-            <form noValidate onSubmit={submitForm}>
-              <DialogTitle>{editing ? 'Sửa phòng thi' : 'Thêm phòng thi'}</DialogTitle>
-              <DialogContent>
-                <Stack spacing={2} sx={{ mt: 1 }}>
-                  <TextField
-                    fullWidth
-                    select
-                    label="Địa điểm thi"
-                    name="organization_code"
-                    value={values.organization_code}
-                    onChange={(e) => {
-                      setFieldValue('organization_code', e.target.value);
-                      if (!editing && codeLocked) {
-                        setFieldValue('code', buildRoomCode(e.target.value, values.name));
-                      }
-                    }}
-                    onBlur={handleBlur}
-                    error={Boolean(touched.organization_code && errors.organization_code)}
-                    helperText={touched.organization_code && errors.organization_code}
-                  >
-                    {organizations.map((org) => (
-                      <MenuItem key={org.code} value={org.code}>
-                        {org.code} - {org.name}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    fullWidth
-                    label="Tên phòng"
-                    name="name"
-                    value={values.name}
-                    onChange={(e) => {
-                      setFieldValue('name', e.target.value);
-                      if (!editing && codeLocked) {
-                        setFieldValue('code', buildRoomCode(values.organization_code, e.target.value));
-                      }
-                    }}
-                    onBlur={handleBlur}
-                    error={Boolean(touched.name && errors.name)}
-                    helperText={touched.name && errors.name}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Mã phòng"
-                    name="code"
-                    value={values.code}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    disabled={!!editing || codeLocked}
-                    error={Boolean(touched.code && errors.code)}
-                    helperText={
-                      (touched.code && errors.code) ||
-                      (!editing && codeLocked && 'Tự động theo Địa điểm thi + Tên phòng. Nhấn "Chỉnh sửa" để đặt tay.')
-                    }
-                    InputProps={
-                      !editing
-                        ? {
-                            endAdornment: (
-                              <InputAdornment position="end">
-                                <Button
-                                  size="small"
-                                  onClick={() => {
-                                    if (codeLocked) {
-                                      setCodeLocked(false);
-                                    } else {
-                                      setCodeLocked(true);
-                                      setFieldValue('code', buildRoomCode(values.organization_code, values.name));
-                                    }
-                                  }}
-                                >
-                                  {codeLocked ? 'Chỉnh sửa' : 'Tự động'}
-                                </Button>
-                              </InputAdornment>
-                            )
-                          }
-                        : undefined
-                    }
-                  />
-                  <TextField
-                    fullWidth
-                    type="number"
-                    label="Số máy"
-                    name="no_slots"
-                    value={values.no_slots}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                    error={Boolean(touched.no_slots && errors.no_slots)}
-                    helperText={touched.no_slots && errors.no_slots}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Diễn giải"
-                    name="desc"
-                    value={values.desc || ''}
-                    onChange={handleChange}
-                    onBlur={handleBlur}
-                  />
-                  <FormControlLabel
-                    control={<Switch checked={!!values.status} onChange={(e) => setFieldValue('status', e.target.checked)} />}
-                    label="Sử dụng"
-                  />
-                </Stack>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setDialogOpen(false)}>Huỷ</Button>
-                <Button type="submit" variant="contained" disabled={isSubmitting}>
-                  Lưu
-                </Button>
-              </DialogActions>
-            </form>
-          )}
-        </Formik>
-      </Dialog>
     </MainCard>
   );
 };

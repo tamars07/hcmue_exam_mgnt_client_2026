@@ -5,12 +5,15 @@ import PropTypes from 'prop-types';
 import {
   Alert,
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   FormControlLabel,
   InputAdornment,
+  ListItemText,
   MenuItem,
   Radio,
   RadioGroup,
@@ -48,6 +51,9 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
   const [file, setFile] = useState(null);
   const [sourceBackupId, setSourceBackupId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [organizations, setOrganizations] = useState([]);
+  const [organizationIds, setOrganizationIds] = useState([]);
+  const [quantriResult, setQuantriResult] = useState(null);
 
   useEffect(() => {
     if (open) {
@@ -57,6 +63,12 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
       setRestoreSource('upload');
       setFile(null);
       setSourceBackupId('');
+      setOrganizationIds([]);
+      setQuantriResult(null);
+      systemAdminService
+        .getMasterOrganizations()
+        .then((res) => setOrganizations(res.data.data))
+        .catch(() => {});
     }
   }, [open]);
 
@@ -64,10 +76,7 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
   const fullDbName = usesPrefix ? `${DB_NAME_PREFIX}${dbName}` : dbName;
   const dbNameValid = dbName && DB_NAME_REGEX.test(dbName);
 
-  const canSubmit =
-    dbNameValid &&
-    !submitting &&
-    (mode !== 'restore' || (restoreSource === 'upload' ? !!file : !!sourceBackupId));
+  const canSubmit = dbNameValid && !submitting && (mode !== 'restore' || (restoreSource === 'upload' ? !!file : !!sourceBackupId));
 
   const handleSubmit = async () => {
     setSubmitting(true);
@@ -83,16 +92,46 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
           formData.append('source_backup_id', sourceBackupId);
         }
       }
-      await withLoading(() => systemAdminService.createExamDatabase(formData), CREATE_MODE_MESSAGE[mode]);
+      if (mode === 'migrate') {
+        organizationIds.forEach((id) => formData.append('organization_ids[]', id));
+      }
+      const res = await withLoading(() => systemAdminService.createExamDatabase(formData), CREATE_MODE_MESSAGE[mode]);
       openSnackbar({ open: true, message: 'Tạo database thành công', variant: 'alert', alert: { color: 'success' } });
       onCreated?.();
-      onClose();
+      const quantriPassword = res?.data?.data?.quantri_password;
+      if (quantriPassword) {
+        setQuantriResult({ password: quantriPassword });
+      } else {
+        onClose();
+      }
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Tạo database thất bại', variant: 'alert', alert: { color: 'error' } });
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (quantriResult) {
+    return (
+      <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+        <DialogTitle>Đã tạo database thành công</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Tài khoản quản trị <strong>quantri</strong> — lưu lại mật khẩu này, có thể xem lại sau ở trang “Tài khoản ADMIN”.
+          </DialogContentText>
+          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+            <TextField label="Tài khoản" value="quantri" InputProps={{ readOnly: true }} fullWidth />
+            <TextField label="Mật khẩu" value={quantriResult.password} InputProps={{ readOnly: true }} fullWidth />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={onClose}>
+            Đã lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -113,7 +152,32 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
           </RadioGroup>
 
           {mode === 'migrate' && (
-            <Alert severity="info">Sẽ tạo 1 database trống và tự động chạy toàn bộ migration để dựng cấu trúc bảng giống hệ thống.</Alert>
+            <>
+              <Alert severity="info">Sẽ tạo 1 database trống và tự động chạy toàn bộ migration để dựng cấu trúc bảng giống hệ thống.</Alert>
+              <TextField
+                fullWidth
+                select
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) =>
+                    organizations
+                      .filter((o) => selected.includes(o.id))
+                      .map((o) => o.code)
+                      .join(', ') || 'Không chọn địa điểm nào'
+                }}
+                label="Địa điểm thi áp dụng kèm (kho dữ liệu dùng chung)"
+                value={organizationIds}
+                onChange={(e) => setOrganizationIds(e.target.value)}
+                helperText="Phòng thi + tài khoản điểm trưởng active của các địa điểm được chọn sẽ tự sao chép vào DB mới. Có thể để trống rồi đồng bộ sau."
+              >
+                {organizations.map((org) => (
+                  <MenuItem key={org.id} value={org.id}>
+                    <Checkbox checked={organizationIds.includes(org.id)} size="small" />
+                    <ListItemText primary={`${org.code} - ${org.name}`} />
+                  </MenuItem>
+                ))}
+              </TextField>
+            </>
           )}
           {mode === 'restore' && (
             <Alert severity="info">Sẽ tạo 1 database trống rồi phục hồi (restore) toàn bộ dữ liệu từ file backup vào đó.</Alert>
@@ -137,8 +201,8 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
               dbName && !dbNameValid
                 ? 'Chỉ cho phép chữ, số và dấu gạch dưới'
                 : mode === 'register'
-                ? 'Phải trùng khớp tên database đã tồn tại trên server'
-                : `Sẽ tạo database tên: ${fullDbName || DB_NAME_PREFIX}`
+                  ? 'Phải trùng khớp tên database đã tồn tại trên server'
+                  : `Sẽ tạo database tên: ${fullDbName || DB_NAME_PREFIX}`
             }
           />
           <TextField
@@ -162,7 +226,13 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
                   <input type="file" hidden accept=".sql,.gz" onChange={(e) => setFile(e.target.files[0] || null)} />
                 </Button>
               ) : (
-                <TextField fullWidth select label="Chọn bản backup" value={sourceBackupId} onChange={(e) => setSourceBackupId(e.target.value)}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Chọn bản backup"
+                  value={sourceBackupId}
+                  onChange={(e) => setSourceBackupId(e.target.value)}
+                >
                   {(allBackups || []).map((b) => (
                     <MenuItem key={b.id} value={b.id}>
                       [{b.db_label}] {new Date(b.created_at).toLocaleString('vi-VN')}

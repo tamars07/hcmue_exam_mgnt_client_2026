@@ -11,6 +11,9 @@ const ExamDatabasesPage = Loadable(lazy(() => import('pages/system/exam-database
 const AdminAccountsPage = Loadable(lazy(() => import('pages/system/admin-accounts')));
 const ExamConfigPage = Loadable(lazy(() => import('pages/system/exam-config')));
 const SystemActivityLogsPage = Loadable(lazy(() => import('pages/system/activity-logs')));
+const MasterOrganizationsPage = Loadable(lazy(() => import('pages/system/organizations')));
+const MasterRoomsPage = Loadable(lazy(() => import('pages/system/rooms')));
+const MasterMonitorsPage = Loadable(lazy(() => import('pages/system/monitors')));
 
 // ==============================|| SUPER ADMIN ROUTING ||============================== //
 // Không tái dùng AuthLayout/GuestGuard hiện có — GuestGuard đọc trạng thái đăng nhập council-mgmt
@@ -46,6 +49,18 @@ const SystemRoutes = {
         {
           path: 'exam-config',
           element: <ExamConfigPage />
+        },
+        {
+          path: 'organizations',
+          element: <MasterOrganizationsPage />
+        },
+        {
+          path: 'rooms',
+          element: <MasterRoomsPage />
+        },
+        {
+          path: 'monitors',
+          element: <MasterMonitorsPage />
         },
         {
           path: 'activity-logs',

@@ -79,6 +79,9 @@ const MonitorsPage = () => {
   }, []);
 
   const roleNameById = (roleId) => roles.find((r) => r.id === roleId)?.name;
+  // Điểm trưởng (CHAIRMAN) không còn tạo/sửa được ở đây — chỉ đến từ đồng bộ kho dữ liệu dùng chung
+  // của Quản trị hệ thống. Vẫn hiện trong bộ lọc/danh sách (roles đầy đủ) để xem, chỉ ẩn ở dialog thêm/sửa.
+  const creatableRoles = roles.filter((r) => r.name !== 'CHAIRMAN');
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -231,20 +234,25 @@ const MonitorsPage = () => {
       width: 100,
       sortable: false,
       filterable: false,
-      renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
-          <Tooltip title="Sửa">
-            <IconButton size="small" onClick={() => handleOpenEdit(params.row)}>
-              <EditOutlined />
-            </IconButton>
+      renderCell: (params) =>
+        params.row.role_name === 'CHAIRMAN' ? (
+          <Tooltip title="Điểm trưởng chỉ sửa/xoá qua Quản trị hệ thống">
+            <span style={{ color: 'var(--mui-palette-text-disabled)', fontSize: 12 }}>Chỉ xem</span>
           </Tooltip>
-          <Tooltip title="Xoá">
-            <IconButton size="small" color="error" onClick={() => handleDelete(params.row)}>
-              <DeleteOutlined />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      )
+        ) : (
+          <Stack direction="row" spacing={0.5}>
+            <Tooltip title="Sửa">
+              <IconButton size="small" onClick={() => handleOpenEdit(params.row)}>
+                <EditOutlined />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Xoá">
+              <IconButton size="small" color="error" onClick={() => handleDelete(params.row)}>
+                <DeleteOutlined />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        )
     }
   ];
 
@@ -392,7 +400,7 @@ const MonitorsPage = () => {
                       error={Boolean(touched.role_id && errors.role_id)}
                       helperText={touched.role_id && errors.role_id}
                     >
-                      {roles.map((r) => (
+                      {creatableRoles.map((r) => (
                         <MenuItem key={r.id} value={r.id}>
                           {r.label}
                         </MenuItem>
