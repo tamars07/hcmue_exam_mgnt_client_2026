@@ -35,6 +35,17 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 const QUESTION_TYPE_LABELS = { 1: 'Trắc nghiệm 1 đáp án', 2: 'Trắc nghiệm nhiều đáp án', 4: 'Trả lời ngắn', 5: 'Tự luận' };
 
+// Dưới 5: đen, 5-<7: xanh lá, 7-<9: xanh dương, 9-<10: vàng, 10: đỏ
+const getScoreColor = (score) => {
+  const value = Number(score);
+  if (Number.isNaN(value)) return 'inherit';
+  if (value >= 10) return '#d32f2f';
+  if (value >= 9) return '#f9a825';
+  if (value >= 7) return '#1976d2';
+  if (value >= 5) return '#2e7d32';
+  return '#000000';
+};
+
 const downloadBlob = (blob, filename) => {
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
@@ -240,19 +251,10 @@ const ResultsPage = () => {
   };
 
   const columns = [
-    { field: 'examinee_code', headerName: 'Số báo danh', width: 130 },
-    { field: 'examinee_name', headerName: 'Họ tên thí sinh', flex: 1, minWidth: 180 },
-    { field: 'id_card_number', headerName: 'CCCD', width: 140 },
-    { field: 'birthday', headerName: 'Ngày sinh', width: 120 },
-    { field: 'council_name', headerName: 'Hội đồng thi', flex: 1, minWidth: 160 },
-    { field: 'council_turn_name', headerName: 'Ca thi', width: 130 },
-    { field: 'room_name', headerName: 'Phòng thi', width: 110 },
-    { field: 'subject_name', headerName: 'Môn thi', width: 130 },
-    { field: 'final_score', headerName: 'Điểm tổng hợp', width: 130 },
     {
       field: 'actions',
       headerName: '',
-      width: 90,
+      width: 60,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
@@ -261,6 +263,28 @@ const ResultsPage = () => {
             <EyeOutlined />
           </IconButton>
         </Tooltip>
+      )
+    },
+    { field: 'subject_name', headerName: 'Môn thi', width: 130 },
+    { field: 'examinee_name', headerName: 'Họ tên thí sinh', flex: 1, minWidth: 180 },
+    { field: 'id_card_number', headerName: 'CCCD/MSSV', width: 140 },
+    { field: 'birthday', headerName: 'Ngày sinh', width: 120 },
+    { field: 'council_turn_name', headerName: 'Ca thi', width: 130 },
+    {
+      field: 'exam_datetime',
+      headerName: 'Ngày giờ thi',
+      width: 150,
+      valueGetter: (value, row) => [row.exam_date, row.exam_time].filter(Boolean).join(' ')
+    },
+    { field: 'room_name', headerName: 'Phòng thi', width: 110 },
+    {
+      field: 'final_score',
+      headerName: 'Điểm tổng hợp',
+      width: 130,
+      renderCell: (params) => (
+        <Typography component="span" variant="body2" sx={{ color: getScoreColor(params.value), fontWeight: 600 }}>
+          {params.value}
+        </Typography>
       )
     }
   ];
