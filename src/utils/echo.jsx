@@ -5,22 +5,22 @@ import axiosServices from './axios';
 
 // ==============================|| REALTIME (LARAVEL REVERB) ||============================== //
 // Lớp tăng cường real-time (tiến độ/thời gian/mất kết nối) — KHÔNG phải nguồn dữ liệu chính, mọi
-// nơi dùng getEcho() phải tự chịu được trường hợp trả về null (chưa cấu hình REACT_APP_REVERB_*)
+// nơi dùng getEcho() phải tự chịu được trường hợp trả về null (chưa cấu hình VITE_REVERB_*)
 // hoặc kết nối/join lỗi, và im lặng bỏ qua — polling/cơ chế hiện có vẫn phải hoạt động đúng độc lập.
 
 let echoInstance = null;
 
 export const getEcho = () => {
-  if (!process.env.REACT_APP_REVERB_APP_KEY) return null;
+  if (!import.meta.env.VITE_REVERB_APP_KEY) return null;
   if (echoInstance) return echoInstance;
 
   echoInstance = new Echo({
     broadcaster: 'reverb',
-    client: new Pusher(process.env.REACT_APP_REVERB_APP_KEY, {
-      wsHost: process.env.REACT_APP_REVERB_HOST,
-      wsPort: process.env.REACT_APP_REVERB_PORT || 80,
-      wssPort: process.env.REACT_APP_REVERB_PORT || 443,
-      forceTLS: (process.env.REACT_APP_REVERB_SCHEME || 'https') === 'https',
+    client: new Pusher(import.meta.env.VITE_REVERB_APP_KEY, {
+      wsHost: import.meta.env.VITE_REVERB_HOST,
+      wsPort: import.meta.env.VITE_REVERB_PORT || 80,
+      wssPort: import.meta.env.VITE_REVERB_PORT || 443,
+      forceTLS: (import.meta.env.VITE_REVERB_SCHEME || 'https') === 'https',
       enabledTransports: ['ws', 'wss'],
       cluster: '',
       // authorizer tuỳ chỉnh (thay vì header tĩnh lúc khởi tạo) để luôn dùng axiosServices hiện có

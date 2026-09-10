@@ -7,6 +7,6 @@ import SystemRoutes from './SystemRoutes';
 
 // ==============================|| ROUTING RENDER ||============================== //
 
-const router = createBrowserRouter([LoginRoutes, MainRoutes, SystemRoutes], { basename: process.env.REACT_APP_BASE_NAME });
+const router = createBrowserRouter([LoginRoutes, MainRoutes, SystemRoutes], { basename: import.meta.env.VITE_BASE_NAME });
 
 export default router;

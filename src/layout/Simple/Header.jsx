@@ -78,7 +78,7 @@ const Header = () => {
                 <Logo reverse to="/" />
               </Typography>
               <Chip
-                label={process.env.REACT_APP_VERSION}
+                label={import.meta.env.VITE_VERSION}
                 variant="outlined"
                 size="small"
                 color="secondary"
