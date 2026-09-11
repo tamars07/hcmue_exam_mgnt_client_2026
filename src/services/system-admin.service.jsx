@@ -47,6 +47,12 @@ const getMasterRooms = (organizationId) => axios.get(`${BASE}/master-rooms`, { p
 const createMasterRoom = (data) => axios.post(`${BASE}/master-rooms`, data);
 const updateMasterRoom = (id, data) => axios.put(`${BASE}/master-rooms/${id}`, data);
 const deleteMasterRoom = (id) => axios.delete(`${BASE}/master-rooms/${id}`);
+const importMasterRooms = (organizationId, file) => {
+  const formData = new FormData();
+  formData.append('master_organization_id', organizationId);
+  formData.append('file', file);
+  return axios.post(`${BASE}/master-rooms/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
 
 // Kho dữ liệu dùng chung — Điểm trưởng
 const getMasterMonitors = (organizationId) =>
@@ -94,6 +100,7 @@ const systemAdminService = {
   createMasterRoom,
   updateMasterRoom,
   deleteMasterRoom,
+  importMasterRooms,
   getMasterMonitors,
   createMasterMonitor,
   updateMasterMonitor,

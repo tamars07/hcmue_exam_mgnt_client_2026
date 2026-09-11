@@ -34,12 +34,14 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  DeleteOutlined,
   DownOutlined,
   EditOutlined,
   FileExcelOutlined,
   FileWordOutlined,
   FileZipOutlined,
   PauseCircleOutlined,
+  PlusOutlined,
   StopOutlined,
   TeamOutlined,
   ThunderboltOutlined
@@ -116,6 +118,9 @@ const CouncilTurnsPage = () => {
 
   // Tải file Excel tài khoản cán bộ coi thi (kèm điểm trưởng) của toàn bộ 1 ca thi.
   const [monitorExportingCode, setMonitorExportingCode] = useState(null);
+
+  // Thêm ca thi thủ công (ngoài số ca đã tự sinh khi tạo hội đồng thi).
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   const fetchTurns = useCallback(async () => {
     try {
@@ -288,6 +293,34 @@ const CouncilTurnsPage = () => {
     }
   };
 
+  const handleCreateTurn = async (values, { setSubmitting, setErrors }) => {
+    try {
+      await withLoading(
+        () => councilMgmtService.createCouncilTurn({ ...values, council_code: councilCode }),
+        'Đang thêm ca thi... Vui lòng chờ'
+      );
+      openSnackbar({ open: true, message: 'Đã thêm ca thi', variant: 'alert', alert: { color: 'success' } });
+      setCreateDialogOpen(false);
+      fetchTurns();
+    } catch (e) {
+      if (e?.data) setErrors(Object.fromEntries(Object.entries(e.data).map(([k, v]) => [k, Array.isArray(v) ? v[0] : v])));
+      openSnackbar({ open: true, message: e?.message || 'Thêm ca thi thất bại', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTurn = async (turn) => {
+    if (!window.confirm(`Xoá ca thi "${turn.code} - ${turn.name}"?`)) return;
+    try {
+      await withLoading(() => councilMgmtService.deleteCouncilTurn(turn.code), 'Đang xoá ca thi... Vui lòng chờ');
+      openSnackbar({ open: true, message: 'Đã xoá ca thi', variant: 'alert', alert: { color: 'success' } });
+      fetchTurns();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Xoá ca thi thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
   const toggleZipSelection = (id, checked) => {
     setSelectedZipIds((prev) => (checked ? [...prev, id] : prev.filter((i) => i !== id)));
   };
@@ -321,9 +354,14 @@ const CouncilTurnsPage = () => {
     <MainCard
       title={council ? `Ca thi - Hội đồng thi ${council.code} - ${council.desc || ''}` : 'Ca thi'}
       secondary={
-        <Link component={RouterLink} to="/council-mgmt/councils" underline="none">
-          <Button startIcon={<ArrowLeftOutlined />}>Quay lại hội đồng thi</Button>
-        </Link>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<PlusOutlined />} onClick={() => setCreateDialogOpen(true)}>
+            Thêm ca thi
+          </Button>
+          <Link component={RouterLink} to="/council-mgmt/councils" underline="none">
+            <Button startIcon={<ArrowLeftOutlined />}>Quay lại hội đồng thi</Button>
+          </Link>
+        </Stack>
       }
     >
       {turns.length === 0 && (
@@ -371,6 +409,18 @@ const CouncilTurnsPage = () => {
                     }}
                   >
                     <EditOutlined />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Xoá ca thi (chỉ xoá được ca thi trống, chưa gán phòng/thí sinh)">
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteTurn(turn);
+                    }}
+                  >
+                    <DeleteOutlined />
                   </IconButton>
                 </Tooltip>
               </Stack>
@@ -640,6 +690,56 @@ const CouncilTurnsPage = () => {
         <DialogActions>
           <Button onClick={() => setExamineeDialog(null)}>Đóng</Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Dialog thêm ca thi thủ công */}
+      <Dialog open={createDialogOpen} onClose={() => setCreateDialogOpen(false)} fullWidth maxWidth="xs">
+        <Formik
+          initialValues={{ name: '', start_at: '' }}
+          validationSchema={Yup.object().shape({
+            name: Yup.string().max(100).required('Bắt buộc nhập tên ca thi'),
+            start_at: Yup.string().required('Bắt buộc nhập ngày giờ thi')
+          })}
+          onSubmit={handleCreateTurn}
+        >
+          {({ values, errors, touched, handleBlur, handleChange, handleSubmit: submitForm, isSubmitting }) => (
+            <form noValidate onSubmit={submitForm}>
+              <DialogTitle>Thêm ca thi</DialogTitle>
+              <DialogContent>
+                <Stack spacing={2} sx={{ mt: 1 }}>
+                  <TextField
+                    fullWidth
+                    label="Tên ca thi"
+                    name="name"
+                    value={values.name}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={Boolean(touched.name && errors.name)}
+                    helperText={touched.name && errors.name}
+                  />
+                  <TextField
+                    fullWidth
+                    type="datetime-local"
+                    label="Ngày giờ thi"
+                    name="start_at"
+                    InputLabelProps={{ shrink: true }}
+                    value={values.start_at}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    error={Boolean(touched.start_at && errors.start_at)}
+                    helperText={touched.start_at && errors.start_at}
+                  />
+                </Stack>
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setCreateDialogOpen(false)}>Huỷ</Button>
+                <Button type="submit" variant="contained" disabled={isSubmitting}>
+                  Lưu
+                </Button>
+              </DialogActions>
+            </form>
+          )}
+        </Formik>
       </Dialog>
 
       {/* Dialog xác nhận kích hoạt phòng thi */}

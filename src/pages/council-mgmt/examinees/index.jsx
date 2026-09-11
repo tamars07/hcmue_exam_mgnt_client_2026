@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 
 // material-ui
-import { Button, Chip, InputAdornment, MenuItem, Stack, TextField, Typography } from '@mui/material';
+import { Button, Chip, IconButton, InputAdornment, MenuItem, Stack, TextField, Tooltip, Typography } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { FilterOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, FilterOutlined, PlusOutlined, SearchOutlined, UploadOutlined } from '@ant-design/icons';
 
 // project import
 import MainCard from 'components/MainCard';
@@ -11,6 +11,7 @@ import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import ImportExamineeDialog from './ImportExamineeDialog';
+import ExamineeFormDialog from './ExamineeFormDialog';
 import { formatTurnLabel } from 'utils/council-schedule';
 
 // Cùng bảng màu với thẻ thí sinh ở "Giám sát ca thi" (pages/chairman/examinees/ExamineeCard.js) —
@@ -52,6 +53,8 @@ const ExamineesPage = () => {
   const [paginationModel, setPaginationModel] = useState({ page: 0, pageSize: 50 });
 
   const [importOpen, setImportOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
 
   useEffect(() => {
     councilMgmtService
@@ -138,6 +141,27 @@ const ExamineesPage = () => {
     setPaginationModel(pagination);
   };
 
+  const handleOpenCreate = () => {
+    setEditing(null);
+    setFormOpen(true);
+  };
+
+  const handleOpenEdit = (row) => {
+    setEditing(row);
+    setFormOpen(true);
+  };
+
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Xoá thí sinh "${row.lastname} ${row.firstname}" (SBD ${row.code})?`)) return;
+    try {
+      await withLoading(() => councilMgmtService.deleteExaminee(row.id), 'Đang xoá... Vui lòng chờ');
+      openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
+      fetchRows();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Xoá thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
   const columns = [
     { field: 'council_turn_name', headerName: 'Ca thi', width: 140 },
     { field: 'room_name', headerName: 'Phòng thi', width: 130 },
@@ -169,6 +193,27 @@ const ExamineesPage = () => {
       width: 130,
       renderCell: (params) =>
         params.value ? <Chip label="Dự phòng" size="small" color="warning" /> : <Chip label="Chính thức" size="small" />
+    },
+    {
+      field: 'actions',
+      headerName: '',
+      width: 90,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <Stack direction="row" spacing={0.5}>
+          <Tooltip title="Sửa">
+            <IconButton size="small" onClick={() => handleOpenEdit(params.row)}>
+              <EditOutlined />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Xoá">
+            <IconButton size="small" color="error" onClick={() => handleDelete(params.row)}>
+              <DeleteOutlined />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      )
     }
   ];
 
@@ -176,9 +221,19 @@ const ExamineesPage = () => {
     <MainCard
       title="Tài khoản thí sinh"
       secondary={
-        <Button variant="contained" startIcon={<UploadOutlined />} onClick={() => setImportOpen(true)}>
-          Import từ Excel
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<PlusOutlined />}
+            disabled={!councilCode}
+            onClick={handleOpenCreate}
+          >
+            Thêm thí sinh
+          </Button>
+          <Button variant="contained" startIcon={<UploadOutlined />} onClick={() => setImportOpen(true)}>
+            Import từ Excel
+          </Button>
+        </Stack>
       }
     >
       <Stack spacing={2}>
@@ -295,6 +350,15 @@ const ExamineesPage = () => {
         defaultTurnCode={turnCode}
         defaultRoomCode={roomCode}
         onImported={fetchRows}
+      />
+
+      <ExamineeFormDialog
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        editing={editing}
+        defaultCouncilCode={councilCode}
+        defaultTurnCode={turnCode}
+        onSaved={fetchRows}
       />
     </MainCard>
   );

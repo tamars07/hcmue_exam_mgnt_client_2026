@@ -19,7 +19,7 @@ import {
   Tooltip
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { EditOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -58,6 +58,7 @@ const CouncilsPage = () => {
   const [monitors, setMonitors] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [exportingCode, setExportingCode] = useState(null);
   // Phần người dùng gõ tiếp sau prefix "{mã địa điểm thi}." khi tạo mới hội đồng thi.
   const [codeSuffix, setCodeSuffix] = useState('');
 
@@ -139,6 +140,47 @@ const CouncilsPage = () => {
     }
   };
 
+  const handleDelete = async (row) => {
+    if (!window.confirm(`Xoá hội đồng thi "${row.desc || row.code}"?`)) return;
+    try {
+      await withLoading(() => councilMgmtService.deleteCouncil(row.code), 'Đang xoá... Vui lòng chờ');
+      openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
+      fetchRows();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Xoá thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const handleExportMonitorAccounts = async (row) => {
+    setExportingCode(row.code);
+    try {
+      const res = await withLoading(
+        () => councilMgmtService.exportCouncilMonitorAccounts(row.code),
+        'Đang tải tài khoản cán bộ coi thi... Vui lòng chờ'
+      );
+      const blob = new Blob([res.data], {
+        type: res.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${row.code}-Tai-khoan-giam-thi.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      openSnackbar({
+        open: true,
+        message: e?.message || 'Tải tài khoản cán bộ coi thi thất bại',
+        variant: 'alert',
+        alert: { color: 'error' }
+      });
+    } finally {
+      setExportingCode(null);
+    }
+  };
+
   const columns = [
     { field: 'code', headerName: 'Mã HĐ thi', width: 140 },
     { field: 'desc', headerName: 'Diễn giải', flex: 1, minWidth: 160 },
@@ -155,7 +197,7 @@ const CouncilsPage = () => {
     {
       field: 'actions',
       headerName: '',
-      width: 130,
+      width: 190,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
@@ -168,6 +210,20 @@ const CouncilsPage = () => {
           <Tooltip title="Quản trị ca thi">
             <IconButton size="small" onClick={() => navigate(`/council-mgmt/councils/${params.row.code}/turns`)}>
               <UnorderedListOutlined />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Xuất phiếu giám thị (toàn hội đồng)">
+            <IconButton
+              size="small"
+              disabled={exportingCode === params.row.code}
+              onClick={() => handleExportMonitorAccounts(params.row)}
+            >
+              <DownloadOutlined />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Xoá">
+            <IconButton size="small" color="error" onClick={() => handleDelete(params.row)}>
+              <DeleteOutlined />
             </IconButton>
           </Tooltip>
         </Stack>

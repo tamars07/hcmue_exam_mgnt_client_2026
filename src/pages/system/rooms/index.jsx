@@ -23,7 +23,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -78,6 +78,17 @@ const RoomsPage = () => {
 
   const selectedOrganization = organizations.find((o) => o.id === organizationId);
 
+  const handleImport = async (file) => {
+    if (!file) return;
+    try {
+      const res = await withLoading(() => systemAdminService.importMasterRooms(organizationId, file), 'Đang import... Vui lòng chờ');
+      openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
+      fetchRows();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Import thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
   const handleOpenCreate = () => {
     setEditing(null);
     setDialogOpen(true);
@@ -124,9 +135,23 @@ const RoomsPage = () => {
     <MainCard
       title="Phòng thi"
       secondary={
-        <Button variant="contained" startIcon={<PlusOutlined />} onClick={handleOpenCreate} disabled={!organizationId}>
-          Thêm phòng thi
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button component="label" variant="outlined" startIcon={<UploadOutlined />} disabled={!organizationId}>
+            Import Excel
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              hidden
+              onChange={(e) => {
+                handleImport(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+          </Button>
+          <Button variant="contained" startIcon={<PlusOutlined />} onClick={handleOpenCreate} disabled={!organizationId}>
+            Thêm phòng thi
+          </Button>
+        </Stack>
       }
     >
       <Stack spacing={2}>

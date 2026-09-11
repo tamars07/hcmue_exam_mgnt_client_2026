@@ -28,10 +28,16 @@ const getCouncils = (params) => axios.get(`${BASE}/councils`, { params: toListPa
 const getCouncil = (code) => axios.get(`${BASE}/councils/${code}`);
 const createCouncil = (data) => axios.post(`${BASE}/councils`, data);
 const updateCouncil = (code, data) => axios.put(`${BASE}/councils/${code}`, data);
+const deleteCouncil = (code) => axios.delete(`${BASE}/councils/${code}`);
+// Xuất file Excel tài khoản cán bộ coi thi (kèm điểm trưởng) của TOÀN BỘ ca thi trong 1 hội đồng
+const exportCouncilMonitorAccounts = (councilCode) =>
+  axios.get(`${BASE}/councils/${councilCode}/export-monitor-accounts`, { responseType: 'blob' });
 
 // Council turns (ca thi)
 const getCouncilTurns = (councilCode) => axios.get(`${BASE}/councils/${councilCode}/turns`);
+const createCouncilTurn = (data) => axios.post(`${BASE}/council-turns`, data);
 const updateCouncilTurn = (code, data) => axios.put(`${BASE}/council-turns/${code}`, data);
+const deleteCouncilTurn = (code) => axios.delete(`${BASE}/council-turns/${code}`);
 
 // Council turn rooms (gán phòng thi cho ca thi)
 const getCouncilTurnRooms = (councilTurnCode) => axios.get(`${BASE}/council-turns/${councilTurnCode}/rooms`);
@@ -52,6 +58,9 @@ const exportCouncilTurnMonitorAccounts = (councilTurnCode) =>
 
 // Examinees (thí sinh)
 const getExaminees = (params) => axios.get(`${BASE}/examinees`, { params: toListParams(params) });
+const createExaminee = (data) => axios.post(`${BASE}/examinees`, data);
+const updateExaminee = (id, data) => axios.put(`${BASE}/examinees/${id}`, data);
+const deleteExaminee = (id) => axios.delete(`${BASE}/examinees/${id}`);
 // Tải file Excel mẫu để import thí sinh — kèm council_code/council_turn_code (nếu có) để dòng ví dụ
 // dùng tên môn thi/phòng thi/ca thi có thật của hội đồng đang chọn.
 const downloadExamineeImportTemplate = (params) => axios.get(`${BASE}/examinees/import/template`, { params, responseType: 'blob' });
@@ -91,8 +100,12 @@ const councilMgmtService = {
   getCouncil,
   createCouncil,
   updateCouncil,
+  deleteCouncil,
+  exportCouncilMonitorAccounts,
   getCouncilTurns,
+  createCouncilTurn,
   updateCouncilTurn,
+  deleteCouncilTurn,
   getCouncilTurnRooms,
   assignCouncilTurnRoom,
   unassignCouncilTurnRoom,
@@ -102,6 +115,9 @@ const councilMgmtService = {
   exportCouncilTurnRoomAccountsZip,
   exportCouncilTurnMonitorAccounts,
   getExaminees,
+  createExaminee,
+  updateExaminee,
+  deleteExaminee,
   downloadExamineeImportTemplate,
   importExamineesPreview,
   importExamineesCommit,
