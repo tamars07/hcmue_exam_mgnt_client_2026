@@ -10,7 +10,9 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   server: {
-    port: Number(process.env.PORT) || 3001
+    host: '127.0.0.1',
+    port: Number(process.env.PORT) || 3001,
+    allowedHosts: ['ems.hcmue.edu.vn']
   },
   preview: {
     port: Number(process.env.PORT) || 3001
