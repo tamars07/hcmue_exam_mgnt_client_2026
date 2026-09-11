@@ -14,6 +14,7 @@ const SystemActivityLogsPage = Loadable(lazy(() => import('pages/system/activity
 const MasterOrganizationsPage = Loadable(lazy(() => import('pages/system/organizations')));
 const MasterRoomsPage = Loadable(lazy(() => import('pages/system/rooms')));
 const MasterMonitorsPage = Loadable(lazy(() => import('pages/system/monitors')));
+const MasterSubjectsPage = Loadable(lazy(() => import('pages/system/subjects')));
 
 // ==============================|| SUPER ADMIN ROUTING ||============================== //
 // Không tái dùng AuthLayout/GuestGuard hiện có — GuestGuard đọc trạng thái đăng nhập council-mgmt
@@ -61,6 +62,10 @@ const SystemRoutes = {
         {
           path: 'monitors',
           element: <MasterMonitorsPage />
+        },
+        {
+          path: 'subjects',
+          element: <MasterSubjectsPage />
         },
         {
           path: 'activity-logs',

@@ -53,6 +53,8 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
   const [submitting, setSubmitting] = useState(false);
   const [organizations, setOrganizations] = useState([]);
   const [organizationIds, setOrganizationIds] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [subjectIds, setSubjectIds] = useState([]);
   const [quantriResult, setQuantriResult] = useState(null);
 
   useEffect(() => {
@@ -64,10 +66,15 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
       setFile(null);
       setSourceBackupId('');
       setOrganizationIds([]);
+      setSubjectIds([]);
       setQuantriResult(null);
       systemAdminService
         .getMasterOrganizations()
         .then((res) => setOrganizations(res.data.data))
+        .catch(() => {});
+      systemAdminService
+        .getMasterSubjects()
+        .then((res) => setSubjects(res.data.data))
         .catch(() => {});
     }
   }, [open]);
@@ -94,6 +101,7 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
       }
       if (mode === 'migrate') {
         organizationIds.forEach((id) => formData.append('organization_ids[]', id));
+        subjectIds.forEach((id) => formData.append('subject_ids[]', id));
       }
       const res = await withLoading(() => systemAdminService.createExamDatabase(formData), CREATE_MODE_MESSAGE[mode]);
       openSnackbar({ open: true, message: 'Tạo database thành công', variant: 'alert', alert: { color: 'success' } });
@@ -174,6 +182,29 @@ const CreateDatabaseDialog = ({ open, onClose, allBackups, onCreated }) => {
                   <MenuItem key={org.id} value={org.id}>
                     <Checkbox checked={organizationIds.includes(org.id)} size="small" />
                     <ListItemText primary={`${org.code} - ${org.name}`} />
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                fullWidth
+                select
+                SelectProps={{
+                  multiple: true,
+                  renderValue: (selected) =>
+                    subjects
+                      .filter((s) => selected.includes(s.id))
+                      .map((s) => s.code)
+                      .join(', ') || 'Không chọn môn thi nào'
+                }}
+                label="Môn thi áp dụng kèm (kho dữ liệu dùng chung)"
+                value={subjectIds}
+                onChange={(e) => setSubjectIds(e.target.value)}
+                helperText="Các môn thi được chọn sẽ tự thêm vào DB mới. Có thể để trống rồi tự thêm sau ở trang Cấu hình Kì thi."
+              >
+                {subjects.map((subject) => (
+                  <MenuItem key={subject.id} value={subject.id}>
+                    <Checkbox checked={subjectIds.includes(subject.id)} size="small" />
+                    <ListItemText primary={`${subject.code} - ${subject.name}`} />
                   </MenuItem>
                 ))}
               </TextField>

@@ -10,7 +10,8 @@ import {
   LoginOutlined,
   EnvironmentOutlined,
   HomeOutlined,
-  TeamOutlined
+  TeamOutlined,
+  BookOutlined
 } from '@ant-design/icons';
 
 // icons
@@ -22,7 +23,8 @@ const icons = {
   LoginOutlined,
   EnvironmentOutlined,
   HomeOutlined,
-  TeamOutlined
+  TeamOutlined,
+  BookOutlined
 };
 
 // ==============================|| MENU ITEMS - SUPER ADMIN (SYSTEM) ||============================== //
@@ -76,6 +78,13 @@ const system = {
       type: 'item',
       url: '/system/monitors',
       icon: icons.TeamOutlined
+    },
+    {
+      id: 'system-subjects',
+      title: <FormattedMessage id="system-subjects" defaultMessage="Môn thi" />,
+      type: 'item',
+      url: '/system/subjects',
+      icon: icons.BookOutlined
     },
     {
       id: 'system-activity-logs',

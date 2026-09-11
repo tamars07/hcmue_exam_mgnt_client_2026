@@ -67,6 +67,23 @@ const regenerateMasterMonitorPassword = (id) => axios.put(`${BASE}/master-monito
 const syncMasterData = (examDatabaseId, organizationIds) =>
   axios.post(`${BASE}/exam-databases/${examDatabaseId}/sync-master-data`, { organization_ids: organizationIds });
 
+// Kho dữ liệu dùng chung — Môn thi
+const getMasterSubjects = () => axios.get(`${BASE}/master-subjects`);
+const createMasterSubject = (data) => axios.post(`${BASE}/master-subjects`, data);
+const updateMasterSubject = (id, data) => axios.put(`${BASE}/master-subjects/${id}`, data);
+const deleteMasterSubject = (id) => axios.delete(`${BASE}/master-subjects/${id}`);
+// Đồng bộ Môn thi vào 1 DB kỳ thi đã tồn tại — backend tự bỏ qua (không ghi đè) môn nào đã có dữ
+// liệu tổ chức thi thật gắn vào, xem response.data.data.skipped.
+const syncMasterSubjects = (examDatabaseId, subjectIds) =>
+  axios.post(`${BASE}/exam-databases/${examDatabaseId}/sync-master-subjects`, { subject_ids: subjectIds });
+// Nhập Môn thi từ file JSON xuất ra bởi phân hệ qbank — chỉ tạo/cập nhật kho dữ liệu dùng chung
+// (master_subjects), không đụng DB hội đồng thi nào.
+const importMasterSubjects = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return axios.post(`${BASE}/master-subjects/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+
 // Nhật ký thao tác Super Admin
 const getActivityLogs = (params) => axios.get(`${BASE}/activity-logs`, { params });
 const getActivityLogActions = () => axios.get(`${BASE}/activity-logs/actions`);
@@ -108,6 +125,12 @@ const systemAdminService = {
   activateMasterMonitor,
   regenerateMasterMonitorPassword,
   syncMasterData,
+  getMasterSubjects,
+  createMasterSubject,
+  updateMasterSubject,
+  deleteMasterSubject,
+  syncMasterSubjects,
+  importMasterSubjects,
   getActivityLogs,
   getActivityLogActions
 };
