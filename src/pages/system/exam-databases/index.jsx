@@ -6,11 +6,13 @@ import {
   Alert,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  LinearProgress,
   Stack,
   Switch,
   Table,
@@ -138,6 +140,8 @@ const ExamDatabasesPage = () => {
         </Stack>
       }
     >
+      {loading && <LinearProgress sx={{ mb: 1 }} />}
+
       <Table>
         <TableHead>
           <TableRow>
@@ -186,6 +190,13 @@ const ExamDatabasesPage = () => {
               </TableCell>
             </TableRow>
           ))}
+          {loading && rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                <CircularProgress size={28} />
+              </TableCell>
+            </TableRow>
+          )}
           {!loading && rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={5}>

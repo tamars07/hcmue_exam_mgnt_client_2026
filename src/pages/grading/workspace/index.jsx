@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Box,
   Chip,
+  CircularProgress,
   Divider,
+  LinearProgress,
   List,
   ListItemButton,
   ListItemText,
@@ -42,15 +44,19 @@ const STATUS_BADGE = {
 const GradingWorkspacePage = () => {
   const [tab, setTab] = useState('chua_cham');
   const [groups, setGroups] = useState({ chua_cham: [], cho_ket_qua: [], da_chot: [] });
+  const [loading, setLoading] = useState(false);
   const [selectedTestCode, setSelectedTestCode] = useState(null);
   const [detail, setDetail] = useState(null);
 
   const fetchAssignments = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await gradingExaminerService.getAssignments();
       setGroups(res.data.data);
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Không tải được danh sách bài', variant: 'alert', alert: { color: 'error' } });
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -99,8 +105,14 @@ const GradingWorkspacePage = () => {
               <Tab key={t.key} value={t.key} label={`${t.label} (${(groups[t.key] || []).length})`} />
             ))}
           </Tabs>
+          {loading && <LinearProgress />}
           <List sx={{ maxHeight: 600, overflow: 'auto' }}>
-            {papers.length === 0 && (
+            {loading && papers.length === 0 && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress size={28} />
+              </Box>
+            )}
+            {!loading && papers.length === 0 && (
               <Typography variant="body2" color="textSecondary" sx={{ p: 2 }}>
                 Không có bài nào ở mục này.
               </Typography>

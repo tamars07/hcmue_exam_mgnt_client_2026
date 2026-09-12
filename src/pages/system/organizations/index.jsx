@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
   FormControlLabel,
   IconButton,
+  LinearProgress,
   MenuItem,
   Stack,
   Switch,
@@ -151,6 +153,8 @@ const OrganizationsPage = () => {
         </Button>
       }
     >
+      {loading && <LinearProgress sx={{ mb: 1 }} />}
+
       <Table>
         <TableHead>
           <TableRow>
@@ -195,6 +199,13 @@ const OrganizationsPage = () => {
               </TableCell>
             </TableRow>
           ))}
+          {loading && rows.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                <CircularProgress size={28} />
+              </TableCell>
+            </TableRow>
+          )}
           {!loading && rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={7}>

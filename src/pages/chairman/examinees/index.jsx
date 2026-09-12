@@ -11,6 +11,7 @@ import {
   FormControl,
   FormControlLabel,
   InputLabel,
+  LinearProgress,
   ListItemText,
   MenuItem,
   OutlinedInput,
@@ -338,7 +339,13 @@ const ChairmanExamineesPage = () => {
           </Button>
         </Stack>
 
-        {roomsData.length === 0 ? (
+        {fetching && <LinearProgress />}
+
+        {fetching && roomsData.length === 0 ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+            <CircularProgress size={28} />
+          </Box>
+        ) : roomsData.length === 0 ? (
           <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
             Chọn hội đồng thi, ca thi và ít nhất 1 phòng thi rồi bấm &quot;Lấy dữ liệu&quot; để bắt đầu giám sát.
           </Typography>

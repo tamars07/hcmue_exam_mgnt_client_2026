@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -11,6 +12,7 @@ import {
   FormControlLabel,
   IconButton,
   InputAdornment,
+  LinearProgress,
   MenuItem,
   Stack,
   Switch,
@@ -176,7 +178,9 @@ const RoomsPage = () => {
             Chọn 1 địa điểm thi ở trên để xem/quản lý phòng thi của địa điểm đó
           </Typography>
         ) : (
-          <Table>
+          <>
+            {loading && <LinearProgress sx={{ mb: 1 }} />}
+            <Table>
             <TableHead>
               <TableRow>
                 <TableCell>Mã phòng</TableCell>
@@ -213,6 +217,13 @@ const RoomsPage = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {loading && rows.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={28} />
+                  </TableCell>
+                </TableRow>
+              )}
               {!loading && rows.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6}>
@@ -224,6 +235,7 @@ const RoomsPage = () => {
               )}
             </TableBody>
           </Table>
+          </>
         )}
       </Stack>
 
