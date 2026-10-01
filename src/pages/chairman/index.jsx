@@ -26,6 +26,8 @@ import {
   CheckCircleOutlined,
   ClockCircleOutlined,
   DownOutlined,
+  FileDoneOutlined,
+  FileExclamationOutlined,
   PauseCircleOutlined,
   PoweroffOutlined,
   ReloadOutlined,
@@ -341,7 +343,9 @@ const ChairmanRoomsPage = () => {
                     ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
                     : lifecycle.blocking_uncleaned_turn
                       ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
-                      : '';
+                      : !lifecycle.has_test_mixes
+                        ? 'Ca thi này chưa nhận đề thi, không thể bắt đầu'
+                        : '';
           const resumeTooltip =
             !lifecycle || lifecycle.can_resume
               ? ''
@@ -371,6 +375,14 @@ const ChairmanRoomsPage = () => {
                     </Typography>
                     <Chip label={`${turn.no_rooms} phòng`} size="small" />
                     <Chip label={dataStatus.label} color={dataStatus.color} size="small" icon={TURN_STATUS_ICONS[dataStatus.key]} />
+                    {lifecycle && (
+                      <Chip
+                        label={lifecycle.has_test_mixes ? 'Đã nhận đề' : 'Chưa nhận đề'}
+                        color={lifecycle.has_test_mixes ? 'success' : 'warning'}
+                        size="small"
+                        icon={lifecycle.has_test_mixes ? <FileDoneOutlined /> : <FileExclamationOutlined />}
+                      />
+                    )}
                     {!turnIsToday && <Chip label="Chỉ xem — không phải ca thi hôm nay" size="small" color="default" />}
                   </Stack>
 

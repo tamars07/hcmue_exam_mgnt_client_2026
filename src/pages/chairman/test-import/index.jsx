@@ -89,9 +89,11 @@ const TestImportPage = () => {
   }, [turnCode]);
 
   const selectedTurn = turns.find((t) => t.code === turnCode);
-  const turnStarted = !!selectedTurn?.started_at && !selectedTurn?.ended_at;
   const turnEnded = !!selectedTurn?.ended_at;
-  const canImport = turnStarted;
+  // Nhận đề không còn phụ thuộc ca thi đã "Bắt đầu" hay chưa — được phép làm trước, chỉ cần còn
+  // trong đúng khung giờ cho phép (import_testdata_before_time), do backend tự kiểm tra và báo lỗi
+  // rõ ràng nếu bấm quá sớm — tránh lặp lại logic tính khung giờ ở cả 2 phía.
+  const canImport = !turnEnded;
 
   const batches = useMemo(() => {
     const grouped = new Map();
@@ -178,9 +180,6 @@ const TestImportPage = () => {
         ) : (
           <>
             {turnEnded && <Alert severity="error">Ca thi đã kết thúc, không thể nhận đề thi nữa.</Alert>}
-            {!turnEnded && !turnStarted && (
-              <Alert severity="warning">Cần bấm &quot;Bắt đầu&quot; ca thi (ở trang Quản lý ca thi) trước khi nhận đề thi.</Alert>
-            )}
 
             {canImport && (
               <Box>
