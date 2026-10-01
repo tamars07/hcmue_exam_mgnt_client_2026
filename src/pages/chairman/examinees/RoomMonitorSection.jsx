@@ -6,6 +6,7 @@ import { ClockCircleOutlined, SyncOutlined } from '@ant-design/icons';
 
 // project import
 import ExamineeCard from './ExamineeCard';
+import ForceLightTheme from 'components/ForceLightTheme';
 
 // ==============================|| GIÁM SÁT KÌ THI - 1 PHÒNG THI ||============================== //
 
@@ -93,21 +94,29 @@ const RoomMonitorSection = ({
             Phòng thi này chưa có thí sinh.
           </Typography>
         ) : (
-          <Grid container spacing={1.5}>
-            {examinees.map((ex) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={ex.username}>
-                <ExamineeCard
-                  examinee={ex}
-                  readOnly={readOnly}
-                  onDetail={onDetail}
-                  onViewLogs={onViewLogs}
-                  onRestoreFromLog={onRestoreFromLog}
-                  onReset={onReset}
-                  connectionStatus={connectivity?.[ex.username]}
-                />
+          // ExamineeCard dùng màu nền cố định theo trạng thái (statusColors, 1 phần là rgba bán
+          // trong suốt) để phân biệt rõ Chờ thi/Đang thi/Đã nộp bài — không phụ thuộc theme. Ép
+          // theme sáng + nền trắng đặc để giữ đúng phối màu này ở chế độ tối, giống hệt cách xử lý
+          // ở trang theo dõi phòng thi của giám thị (hcmue_client_2026/src/pages/exam/giamthi.js).
+          <ForceLightTheme>
+            <Box sx={{ bgcolor: '#fff', p: 1 }}>
+              <Grid container spacing={1.5}>
+                {examinees.map((ex) => (
+                  <Grid item xs={12} sm={6} md={4} lg={3} key={ex.username}>
+                    <ExamineeCard
+                      examinee={ex}
+                      readOnly={readOnly}
+                      onDetail={onDetail}
+                      onViewLogs={onViewLogs}
+                      onRestoreFromLog={onRestoreFromLog}
+                      onReset={onReset}
+                      connectionStatus={connectivity?.[ex.username]}
+                    />
+                  </Grid>
+                ))}
               </Grid>
-            ))}
-          </Grid>
+            </Box>
+          </ForceLightTheme>
         )}
       </Box>
     </Box>
