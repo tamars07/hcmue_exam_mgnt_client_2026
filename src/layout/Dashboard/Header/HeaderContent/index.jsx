@@ -9,6 +9,7 @@ import Notification from './Notification';
 import FullScreen from './FullScreen';
 import MobileSection from './MobileSection';
 import ActiveDatabaseInfo from './ActiveDatabaseInfo';
+import ColorModeToggle from 'components/ColorModeToggle';
 
 import useConfig from 'hooks/useConfig';
 import DrawerHeader from 'layout/Dashboard/Drawer/DrawerHeader';
@@ -29,6 +30,7 @@ const HeaderContent = () => {
       {downLG && <Box sx={{ width: '100%', ml: 1 }} />}
 
       {!downLG && <ActiveDatabaseInfo />}
+      <ColorModeToggle />
       <Notification />
       {!downLG && <FullScreen />}
       {downLG && <MobileSection />}
