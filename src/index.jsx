@@ -27,7 +27,7 @@ import '@fontsource/public-sans/700.css';
 
 // project import
 import App from './App';
-// import { ConfigProvider } from 'contexts/ConfigContext';
+import { ConfigProvider } from 'contexts/ConfigContext';
 import ErrorBoundary from 'components/ErrorBoundary';
 import reportWebVitals from './reportWebVitals';
 
@@ -36,11 +36,14 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 // ==============================|| MAIN - REACT DOM RENDER ||============================== //
 
 root.render(
-  // <ConfigProvider>
-  <ErrorBoundary>
-    <App />
-  </ErrorBoundary>
-  // </ConfigProvider>
+  // ConfigProvider bị comment out từ bản scaffold gốc (từ commit khởi tạo repo) — bật lại vì
+  // ThemeCustomization/ColorModeToggle đọc mode/presetColor/... qua useConfig(), thiếu Provider
+  // thì mọi onChange* chỉ là no-op tĩnh, không đổi được gì (kể cả nút chuyển sáng/tối).
+  <ConfigProvider>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </ConfigProvider>
 );
 
 // If you want to start measuring performance in your app, pass a function
