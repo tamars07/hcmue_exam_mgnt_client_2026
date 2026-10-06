@@ -83,6 +83,13 @@ const importMasterSubjects = (file) => {
   formData.append('file', file);
   return axios.post(`${BASE}/master-subjects/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 };
+// Nhập Môn thi từ file Excel tự chuẩn bị (cột: ma_mon_thi, ten_mon_thi, su_dung) — bù cho
+// importMasterSubjects() ở trên (chỉ nhận JSON xuất từ qbank).
+const importMasterSubjectsExcel = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return axios.post(`${BASE}/master-subjects/import-excel`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
 
 // Nhật ký thao tác Super Admin
 const getActivityLogs = (params) => axios.get(`${BASE}/activity-logs`, { params });
@@ -131,6 +138,7 @@ const systemAdminService = {
   deleteMasterSubject,
   syncMasterSubjects,
   importMasterSubjects,
+  importMasterSubjectsExcel,
   getActivityLogs,
   getActivityLogActions
 };

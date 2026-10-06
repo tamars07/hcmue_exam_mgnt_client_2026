@@ -311,7 +311,8 @@ const CouncilTurnsPage = () => {
   };
 
   const handleDeleteTurn = async (turn) => {
-    if (!window.confirm(`Xoá ca thi "${turn.code} - ${turn.name}"?`)) return;
+    if (!window.confirm(`Xoá ca thi "${turn.code} - ${turn.name}"? Toàn bộ phòng thi đã gán và đề đã nhận của ca thi này sẽ bị xoá vĩnh viễn (chỉ xoá được khi ca thi chưa có thí sinh).`))
+      return;
     try {
       await withLoading(() => councilMgmtService.deleteCouncilTurn(turn.code), 'Đang xoá ca thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá ca thi', variant: 'alert', alert: { color: 'success' } });
@@ -411,7 +412,7 @@ const CouncilTurnsPage = () => {
                     <EditOutlined />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Xoá ca thi (chỉ xoá được ca thi trống, chưa gán phòng/thí sinh)">
+                <Tooltip title="Xoá ca thi (chỉ xoá được khi ca thi chưa bắt đầu thi và chưa có thí sinh — xoá kèm phòng gán/đề đã nhận của ca này)">
                   <IconButton
                     size="small"
                     color="error"

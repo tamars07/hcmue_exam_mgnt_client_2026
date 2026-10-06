@@ -141,7 +141,12 @@ const CouncilsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá hội đồng thi "${row.desc || row.code}"?`)) return;
+    if (
+      !window.confirm(
+        `Xoá hội đồng thi "${row.desc || row.code}"? Toàn bộ ca thi, phòng thi đã gán, đề đã nhận của hội đồng này sẽ bị xoá vĩnh viễn (chỉ xoá được khi chưa có thí sinh nào).`
+      )
+    )
+      return;
     try {
       await withLoading(() => councilMgmtService.deleteCouncil(row.code), 'Đang xoá... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });

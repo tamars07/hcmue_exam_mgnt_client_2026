@@ -42,10 +42,12 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 // CreateDatabaseDialog), (2) đồng bộ thủ công vào 1 DB đã tồn tại (nút "Đồng bộ" dưới đây, giống
 // trang Địa điểm thi). Khác Địa điểm thi/Phòng thi: `subjects` của từng hội đồng có thể đã gắn
 // tests/questions/điểm số thật — backend TỰ BỎ QUA (không ghi đè) môn nào đã có dữ liệu liên kết,
-// xem MasterDataApplyService::applySubject(). Ngoài tự thêm tay, có thể "Nhập từ file" — file JSON
-// xuất ra từ trang Môn học của phân hệ qbank (hcmue_qbank_client_2026) — để 2 phân hệ khớp dữ liệu
-// môn thi mà không cần gõ tay lại. Import ở đây chỉ tạo/cập nhật kho dùng chung, không đụng DB hội
-// đồng thi nào (xem MasterSubjectController::import()).
+// xem MasterDataApplyService::applySubject(). Ngoài tự thêm tay, có 2 cách nhập hàng loạt: "Import
+// Excel" (file tự chuẩn bị, cột ma_mon_thi/ten_mon_thi/su_dung — xem MasterSubjectController::
+// importExcel()) và "Nhập từ file qbank (JSON)" — file JSON xuất ra từ trang Môn học của phân hệ
+// qbank (hcmue_qbank_client_2026) để 2 phân hệ khớp dữ liệu môn thi mà không cần gõ tay lại (xem
+// MasterSubjectController::import()). Cả 2 chỉ tạo/cập nhật kho dùng chung, không đụng DB hội đồng
+// thi nào.
 
 const emptyValues = { code: '', name: '', status: true };
 
@@ -162,13 +164,38 @@ const SubjectsPage = () => {
     }
   };
 
+  const handleImportExcel = async (file) => {
+    if (!file) return;
+    try {
+      const res = await withLoading(() => systemAdminService.importMasterSubjectsExcel(file), 'Đang import... Vui lòng chờ');
+      openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
+      fetchRows();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Import thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
   return (
     <MainCard
       title="Môn thi"
       secondary={
         <Stack direction="row" spacing={1}>
+          <Tooltip title='Cột: ma_mon_thi/ten_mon_thi/su_dung — hoặc code/name/status (đúng file .xlsx xuất từ nút "Xuất file Excel" ở trang Môn học bên qbank)'>
+            <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
+              Import Excel
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                hidden
+                onChange={(e) => {
+                  handleImportExcel(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </Button>
+          </Tooltip>
           <Button variant="outlined" startIcon={<UploadOutlined />} onClick={handleOpenImport}>
-            Nhập từ file
+            Nhập từ file qbank (JSON)
           </Button>
           <Button variant="contained" startIcon={<PlusOutlined />} onClick={handleOpenCreate}>
             Thêm môn thi
@@ -292,7 +319,7 @@ const SubjectsPage = () => {
       </Dialog>
 
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Nhập môn thi từ file</DialogTitle>
+        <DialogTitle>Nhập môn thi từ file qbank (JSON)</DialogTitle>
         <DialogContent>
           {!importResult ? (
             <>

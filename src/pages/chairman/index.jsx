@@ -340,22 +340,18 @@ const ChairmanRoomsPage = () => {
                 : !lifecycle.start_window_open
                   ? `Chưa đến thời điểm được phép bắt đầu ca thi — mở lúc ${lifecycle.start_window_at}`
                   : lifecycle.blocking_started_turn
-                    ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
-                    : lifecycle.blocking_uncleaned_turn
-                      ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
-                      : !lifecycle.has_test_mixes
-                        ? 'Ca thi này chưa nhận đề thi, không thể bắt đầu'
-                        : '';
+                    ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc ca thi này trước`
+                    : !lifecycle.has_test_mixes
+                      ? 'Ca thi này chưa nhận đề thi, không thể bắt đầu'
+                      : '';
           const resumeTooltip =
             !lifecycle || lifecycle.can_resume
               ? ''
               : lifecycle.is_cleaned
                 ? 'Dữ liệu ca thi này đã được dọn dẹp, không thể mở lại'
                 : lifecycle.blocking_started_turn
-                  ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc và dọn dẹp dữ liệu trước`
-                  : lifecycle.blocking_uncleaned_turn
-                    ? `Ca thi "${lifecycle.blocking_uncleaned_turn}" đã kết thúc nhưng chưa dọn dẹp dữ liệu — cần dọn dẹp trước`
-                    : '';
+                  ? `Ca thi "${lifecycle.blocking_started_turn}" đang được bắt đầu — cần kết thúc ca thi này trước`
+                  : '';
           const cancelStartTooltip =
             !lifecycle || lifecycle.can_cancel_start ? '' : 'Ca thi này đã nhận đề thi, không thể huỷ trạng thái bắt đầu';
 
