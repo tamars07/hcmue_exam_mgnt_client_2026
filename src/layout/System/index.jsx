@@ -22,6 +22,7 @@ import { LogoutOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-desig
 
 // project import
 import IconButton from 'components/@extended/IconButton';
+import ColorModeToggle from 'components/ColorModeToggle';
 import Loader from 'components/Loader';
 import SystemDrawer from './Drawer';
 import useSuperAdmin from 'hooks/useSuperAdmin';
@@ -75,6 +76,7 @@ const SystemLayout = () => {
                 </Typography>
               </Stack>
             )}
+            <ColorModeToggle sx={{ color: 'common.white', mr: 1 }} />
             <Button color="inherit" startIcon={<LogoutOutlined />} onClick={() => setConfirmOpen(true)}>
               Đăng xuất
             </Button>

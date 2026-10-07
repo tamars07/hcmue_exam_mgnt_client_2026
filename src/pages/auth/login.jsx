@@ -49,7 +49,7 @@ const Login = () => {
         <Grid item xs={12}>
           <Typography variant="body2" align="center" color="text.secondary">
             Bạn là Super Admin cấu hình cơ sở dữ liệu?{' '}
-            <Link to="/system/login" style={{ fontWeight: 600 }}>
+            <Link to="/acp/login" style={{ fontWeight: 600 }}>
               Đăng nhập tại đây
             </Link>
           </Typography>

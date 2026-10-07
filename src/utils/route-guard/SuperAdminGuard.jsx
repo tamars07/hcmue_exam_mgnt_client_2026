@@ -14,7 +14,7 @@ const SuperAdminGuard = ({ children }) => {
 
   useEffect(() => {
     if (!isLoggedIn) {
-      navigate('/system/login', {
+      navigate('/acp/login', {
         state: {
           from: location.pathname
         },

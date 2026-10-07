@@ -19,8 +19,8 @@ axiosSystem.interceptors.request.use(
 axiosSystem.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error?.response?.status === 401 && !window.location.href.includes('/system/login')) {
-      window.location = '/system/login';
+    if (error?.response?.status === 401 && !window.location.href.includes('/acp/login')) {
+      window.location = '/acp/login';
     }
 
     return Promise.reject(

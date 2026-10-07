@@ -41,56 +41,56 @@ const system = {
       id: 'system-exam-databases',
       title: <FormattedMessage id="system-exam-databases" defaultMessage="Cấu hình database" />,
       type: 'item',
-      url: '/system/exam-databases',
+      url: '/acp/exam-databases',
       icon: icons.DatabaseOutlined
     },
     {
       id: 'system-admin-accounts',
       title: <FormattedMessage id="system-admin-accounts" defaultMessage="Tài khoản ADMIN" />,
       type: 'item',
-      url: '/system/admin-accounts',
+      url: '/acp/admin-accounts',
       icon: icons.IdcardOutlined
     },
     {
       id: 'system-exam-config',
       title: <FormattedMessage id="system-exam-config" defaultMessage="Cấu hình Kì thi" />,
       type: 'item',
-      url: '/system/exam-config',
+      url: '/acp/exam-config',
       icon: icons.SettingOutlined
     },
     {
       id: 'system-organizations',
       title: <FormattedMessage id="system-organizations" defaultMessage="Địa điểm thi" />,
       type: 'item',
-      url: '/system/organizations',
+      url: '/acp/organizations',
       icon: icons.EnvironmentOutlined
     },
     {
       id: 'system-rooms',
       title: <FormattedMessage id="system-rooms" defaultMessage="Phòng thi" />,
       type: 'item',
-      url: '/system/rooms',
+      url: '/acp/rooms',
       icon: icons.HomeOutlined
     },
     {
       id: 'system-monitors',
       title: <FormattedMessage id="system-monitors" defaultMessage="Cán bộ" />,
       type: 'item',
-      url: '/system/monitors',
+      url: '/acp/monitors',
       icon: icons.TeamOutlined
     },
     {
       id: 'system-subjects',
       title: <FormattedMessage id="system-subjects" defaultMessage="Môn thi" />,
       type: 'item',
-      url: '/system/subjects',
+      url: '/acp/subjects',
       icon: icons.BookOutlined
     },
     {
       id: 'system-activity-logs',
       title: <FormattedMessage id="system-activity-logs" defaultMessage="Nhật ký Hệ thống" />,
       type: 'item',
-      url: '/system/activity-logs',
+      url: '/acp/activity-logs',
       icon: icons.FileSearchOutlined
     }
   ]

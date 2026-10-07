@@ -50,7 +50,7 @@ const ActiveDatabaseInfo = () => {
           size="small"
           variant="outlined"
           clickable
-          onClick={() => navigate('/system/login')}
+          onClick={() => navigate('/acp/login')}
         />
       </Tooltip>
     </Stack>

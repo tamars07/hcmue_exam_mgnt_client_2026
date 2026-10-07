@@ -17,7 +17,7 @@ const SuperAdminGuestGuard = ({ children }) => {
 
   useEffect(() => {
     if (isLoggedIn) {
-      navigate(location?.state?.from ? location?.state?.from : '/system/exam-databases', {
+      navigate(location?.state?.from ? location?.state?.from : '/acp/exam-databases', {
         state: { from: '' },
         replace: true
       });

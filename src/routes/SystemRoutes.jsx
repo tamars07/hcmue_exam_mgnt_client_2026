@@ -2,6 +2,7 @@ import { lazy } from 'react';
 
 // project import
 import Loadable from 'components/Loadable';
+import ForceLightTheme from 'components/ForceLightTheme';
 import SystemLayout from 'layout/System';
 import SuperAdminGuard from 'utils/route-guard/SuperAdminGuard';
 import SuperAdminGuestGuard from 'utils/route-guard/SuperAdminGuestGuard';
@@ -21,18 +22,20 @@ const MasterSubjectsPage = Loadable(lazy(() => import('pages/system/subjects')))
 // (JWTContext), sẽ đá nhầm 1 admin hội đồng thi đang đăng nhập sẵn ra khỏi trang login super admin.
 
 const SystemRoutes = {
-  path: '/system',
+  path: '/acp',
   children: [
     {
       path: 'login',
       element: (
-        <SuperAdminGuestGuard>
-          <SystemLogin />
-        </SuperAdminGuestGuard>
+        <ForceLightTheme>
+          <SuperAdminGuestGuard>
+            <SystemLogin />
+          </SuperAdminGuestGuard>
+        </ForceLightTheme>
       )
     },
     {
-      path: '/system',
+      path: '/acp',
       element: (
         <SuperAdminGuard>
           <SystemLayout />
