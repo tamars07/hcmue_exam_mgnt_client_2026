@@ -15,6 +15,7 @@ import LoadingOverlay from 'components/LoadingOverlay';
 import { JWTProvider as AuthProvider } from './contexts/JWTContext';
 import { SuperAdminProvider } from './contexts/SuperAdminContext';
 import { LoadingOverlayProvider } from './contexts/LoadingOverlayContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 
 // ==============================|| APP - THEME, ROUTER, LOCAL ||============================== //
 
@@ -26,11 +27,13 @@ const App = () => (
         <AuthProvider>
           <SuperAdminProvider>
             <LoadingOverlayProvider>
-              <Notistack>
-                <RouterProvider router={router} />
-                <Snackbar />
-                <LoadingOverlay />
-              </Notistack>
+              <ConfirmProvider>
+                <Notistack>
+                  <RouterProvider router={router} />
+                  <Snackbar />
+                  <LoadingOverlay />
+                </Notistack>
+              </ConfirmProvider>
             </LoadingOverlayProvider>
           </SuperAdminProvider>
         </AuthProvider>

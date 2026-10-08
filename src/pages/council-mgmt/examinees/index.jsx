@@ -10,6 +10,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 import ImportExamineeDialog from './ImportExamineeDialog';
 import ExamineeFormDialog from './ExamineeFormDialog';
 import { formatTurnLabel } from 'utils/council-schedule';
@@ -34,6 +35,7 @@ const EXAM_STATUS_TEXT = {
 
 const ExamineesPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [councils, setCouncils] = useState([]);
   const [turns, setTurns] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -152,7 +154,13 @@ const ExamineesPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá thí sinh "${row.lastname} ${row.firstname}" (SBD ${row.code})?`)) return;
+    const ok = await confirm({
+      title: 'Xoá thí sinh',
+      message: `Xoá thí sinh "${row.lastname} ${row.firstname}" (SBD ${row.code})?`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => councilMgmtService.deleteExaminee(row.id), 'Đang xoá... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });

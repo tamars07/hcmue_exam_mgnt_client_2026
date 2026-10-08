@@ -24,6 +24,7 @@ import { CloudDownloadOutlined, DeleteOutlined, CloudUploadOutlined } from '@ant
 import { openSnackbar } from 'api/snackbar';
 import systemAdminService from 'services/system-admin.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 
 // Đặt tên file tải về theo tên db + thời điểm backup — không dựa vào header Content-Disposition
 // của response (không đọc được qua CORS khi FE/BE khác origin, đã gặp ở tính năng tải zip trước đó).
@@ -44,6 +45,7 @@ const formatBytes = (bytes) => {
 
 const BackupHistoryDialog = ({ open, onClose, examDatabase, onChanged }) => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
@@ -102,7 +104,13 @@ const BackupHistoryDialog = ({ open, onClose, examDatabase, onChanged }) => {
   };
 
   const handleDeleteBackup = async (backup) => {
-    if (!window.confirm(`Xoá bản backup "${backup.file_path.split('/').pop()}"?`)) return;
+    const ok = await confirm({
+      title: 'Xoá bản backup',
+      message: `Xoá bản backup "${backup.file_path.split('/').pop()}"?`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => systemAdminService.deleteBackup(examDatabase.id, backup.id), 'Đang xoá bản backup... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá bản backup', variant: 'alert', alert: { color: 'success' } });

@@ -56,6 +56,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 import { formatTurnLabel, getTurnDataStatus } from 'utils/council-schedule';
 
 // ==============================|| COUNCIL TURNS - LIST ||============================== //
@@ -87,6 +88,7 @@ const EXAM_STATUS_TEXT = {
 
 const CouncilTurnsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const { code: councilCode } = useParams();
   const [council, setCouncil] = useState(null);
   const [turns, setTurns] = useState([]);
@@ -311,8 +313,13 @@ const CouncilTurnsPage = () => {
   };
 
   const handleDeleteTurn = async (turn) => {
-    if (!window.confirm(`Xoá ca thi "${turn.code} - ${turn.name}"? Toàn bộ phòng thi đã gán và đề đã nhận của ca thi này sẽ bị xoá vĩnh viễn (chỉ xoá được khi ca thi chưa có thí sinh).`))
-      return;
+    const ok = await confirm({
+      title: 'Xoá ca thi',
+      message: `Xoá ca thi "${turn.code} - ${turn.name}"? Toàn bộ phòng thi đã gán và đề đã nhận của ca thi này sẽ bị xoá vĩnh viễn (chỉ xoá được khi ca thi chưa có thí sinh).`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => councilMgmtService.deleteCouncilTurn(turn.code), 'Đang xoá ca thi... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá ca thi', variant: 'alert', alert: { color: 'success' } });

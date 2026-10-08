@@ -14,7 +14,6 @@ const ExamConfigPage = Loadable(lazy(() => import('pages/system/exam-config')));
 const SystemActivityLogsPage = Loadable(lazy(() => import('pages/system/activity-logs')));
 const MasterOrganizationsPage = Loadable(lazy(() => import('pages/system/organizations')));
 const MasterRoomsPage = Loadable(lazy(() => import('pages/system/rooms')));
-const MasterMonitorsPage = Loadable(lazy(() => import('pages/system/monitors')));
 const MasterSubjectsPage = Loadable(lazy(() => import('pages/system/subjects')));
 
 // ==============================|| SUPER ADMIN ROUTING ||============================== //
@@ -61,10 +60,6 @@ const SystemRoutes = {
         {
           path: 'rooms',
           element: <MasterRoomsPage />
-        },
-        {
-          path: 'monitors',
-          element: <MasterMonitorsPage />
         },
         {
           path: 'subjects',

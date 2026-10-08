@@ -30,6 +30,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 
 // ==============================|| COUNCILS - LIST ||============================== //
 
@@ -49,6 +50,7 @@ const emptyValues = {
 const CouncilsPage = () => {
   const navigate = useNavigate();
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [rows, setRows] = useState([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -141,12 +143,13 @@ const CouncilsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (
-      !window.confirm(
-        `Xoá hội đồng thi "${row.desc || row.code}"? Toàn bộ ca thi, phòng thi đã gán, đề đã nhận của hội đồng này sẽ bị xoá vĩnh viễn (chỉ xoá được khi chưa có thí sinh nào).`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: 'Xoá hội đồng thi',
+      message: `Xoá hội đồng thi "${row.desc || row.code}"? Toàn bộ ca thi, phòng thi đã gán, đề đã nhận của hội đồng này sẽ bị xoá vĩnh viễn (chỉ xoá được khi chưa có thí sinh nào).`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => councilMgmtService.deleteCouncil(row.code), 'Đang xoá... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });

@@ -25,7 +25,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import { DeleteOutlined, EditOutlined, PlusOutlined, SyncOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined, SyncOutlined, TeamOutlined, UploadOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -36,6 +36,8 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import systemAdminService from 'services/system-admin.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
+import OrganizationMonitorsDialog from './OrganizationMonitorsDialog';
 
 // ==============================|| KHO DỮ LIỆU DÙNG CHUNG - ĐỊA ĐIỂM THI ||============================== //
 // Nguồn duy nhất cho Địa điểm thi/Phòng thi/Điểm trưởng của mọi DB kỳ thi — thêm/sửa/xoá ở đây, rồi
@@ -44,13 +46,27 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 const emptyValues = { code: '', name: '', address: '', status: true };
 
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 const OrganizationsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [passwordDialog, setPasswordDialog] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [monitorsTarget, setMonitorsTarget] = useState(null);
 
   const [syncTarget, setSyncTarget] = useState(null);
   const [databases, setDatabases] = useState([]);
@@ -83,12 +99,13 @@ const OrganizationsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (
-      !window.confirm(
-        `Xoá địa điểm thi "${row.name}"? Toàn bộ phòng thi + tài khoản điểm trưởng thuộc địa điểm này cũng sẽ bị xoá khỏi kho dùng chung (không ảnh hưởng dữ liệu đã đồng bộ vào các DB kỳ thi trước đó).`
-      )
-    )
-      return;
+    const ok = await confirm({
+      title: 'Xoá địa điểm thi',
+      message: `Xoá địa điểm thi "${row.name}"? Toàn bộ phòng thi + tài khoản điểm trưởng thuộc địa điểm này cũng sẽ bị xoá khỏi kho dùng chung (không ảnh hưởng dữ liệu đã đồng bộ vào các DB kỳ thi trước đó).`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => systemAdminService.deleteMasterOrganization(row.id), 'Đang xoá... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
@@ -122,6 +139,36 @@ const OrganizationsPage = () => {
     }
   };
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await systemAdminService.downloadMasterOrganizationImportTemplate();
+      downloadBlob(res.data, 'Mau_import_dia_diem_thi.xlsx');
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Tải file mẫu thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const handleImport = async (file) => {
+    if (!file) return;
+    try {
+      const res = await withLoading(() => systemAdminService.importMasterOrganizations(file), 'Đang import... Vui lòng chờ');
+      setImportResult(res.data.data);
+      openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
+      fetchRows();
+    } catch (e) {
+      openSnackbar({ open: true, message: e?.message || 'Import thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await withLoading(() => systemAdminService.exportMasterOrganizations(), 'Đang xuất file... Vui lòng chờ');
+      downloadBlob(res.data, `Dia_diem_thi_${Date.now()}.xlsx`);
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Xuất file thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
   const handleOpenSync = (row) => {
     setSyncTarget(row);
     setSyncDbId('');
@@ -148,9 +195,29 @@ const OrganizationsPage = () => {
     <MainCard
       title="Địa điểm thi"
       secondary={
-        <Button variant="contained" startIcon={<PlusOutlined />} onClick={handleOpenCreate}>
-          Thêm địa điểm thi
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+            Tải file mẫu
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleExport}>
+            Xuất Excel
+          </Button>
+          <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
+            Import Excel
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              hidden
+              onChange={(e) => {
+                handleImport(e.target.files?.[0]);
+                e.target.value = '';
+              }}
+            />
+          </Button>
+          <Button variant="contained" startIcon={<PlusOutlined />} onClick={handleOpenCreate}>
+            Thêm địa điểm thi
+          </Button>
+        </Stack>
       }
     >
       {loading && <LinearProgress sx={{ mb: 1 }} />}
@@ -180,6 +247,11 @@ const OrganizationsPage = () => {
               </TableCell>
               <TableCell align="right">
                 <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                  <Tooltip title="Tài khoản điểm trưởng">
+                    <IconButton size="small" onClick={() => setMonitorsTarget(row)}>
+                      <TeamOutlined />
+                    </IconButton>
+                  </Tooltip>
                   <Tooltip title="Đồng bộ vào 1 DB kỳ thi">
                     <IconButton size="small" onClick={() => handleOpenSync(row)}>
                       <SyncOutlined />
@@ -292,8 +364,8 @@ const OrganizationsPage = () => {
         <DialogTitle>Đã tạo tài khoản điểm trưởng</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Tài khoản điểm trưởng cho địa điểm <strong>{passwordDialog?.code}</strong> — lưu lại mật khẩu này, có thể xem lại sau ở trang
-            “Cán bộ”.
+            Tài khoản điểm trưởng cho địa điểm <strong>{passwordDialog?.code}</strong> — lưu lại mật khẩu này, có thể xem lại sau bằng nút
+            “Tài khoản điểm trưởng” trên dòng địa điểm đó.
           </DialogContentText>
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <TextField label="Tài khoản" value={passwordDialog?.code || ''} InputProps={{ readOnly: true }} fullWidth />
@@ -302,6 +374,61 @@ const OrganizationsPage = () => {
         </DialogContent>
         <DialogActions>
           <Button variant="contained" onClick={() => setPasswordDialog(null)}>
+            Đã lưu
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!importResult} onClose={() => setImportResult(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Kết quả import địa điểm thi</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2}>
+            {importResult?.created?.length > 0 ? (
+              <>
+                <DialogContentText>
+                  Đã tạo {importResult.created.length} địa điểm thi, kèm tài khoản điểm trưởng — lưu lại mật khẩu ngay, có thể xem lại
+                  sau bằng nút “Tài khoản điểm trưởng” trên dòng địa điểm đó.
+                </DialogContentText>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Địa điểm</TableCell>
+                      <TableCell>Tài khoản điểm trưởng</TableCell>
+                      <TableCell>Mật khẩu</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {importResult.created.map((row) => (
+                      <TableRow key={row.code}>
+                        <TableCell>
+                          {row.code} - {row.name}
+                        </TableCell>
+                        <TableCell>{row.chairman_code}</TableCell>
+                        <TableCell>{row.chairman_password}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </>
+            ) : (
+              <DialogContentText>Không có địa điểm thi nào được tạo mới.</DialogContentText>
+            )}
+            {importResult?.errors?.length > 0 && (
+              <Stack spacing={0.5}>
+                <Typography variant="body2" color="error.main">
+                  {importResult.errors.length} dòng lỗi, không được import:
+                </Typography>
+                {importResult.errors.map((err) => (
+                  <Typography key={err.row_number} variant="body2" color="error.main">
+                    Dòng {err.row_number}: {err.reasons.join('; ')}
+                  </Typography>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setImportResult(null)}>
             Đã lưu
           </Button>
         </DialogActions>
@@ -330,6 +457,15 @@ const OrganizationsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <OrganizationMonitorsDialog
+        open={!!monitorsTarget}
+        organization={monitorsTarget}
+        onClose={() => {
+          setMonitorsTarget(null);
+          fetchRows();
+        }}
+      />
     </MainCard>
   );
 };

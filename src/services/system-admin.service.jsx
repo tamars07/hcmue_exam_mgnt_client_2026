@@ -41,6 +41,13 @@ const getMasterOrganizations = () => axios.get(`${BASE}/master-organizations`);
 const createMasterOrganization = (data) => axios.post(`${BASE}/master-organizations`, data);
 const updateMasterOrganization = (id, data) => axios.put(`${BASE}/master-organizations/${id}`, data);
 const deleteMasterOrganization = (id) => axios.delete(`${BASE}/master-organizations/${id}`);
+const downloadMasterOrganizationImportTemplate = () => axios.get(`${BASE}/master-organizations/import/template`, { responseType: 'blob' });
+const importMasterOrganizations = (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  return axios.post(`${BASE}/master-organizations/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+};
+const exportMasterOrganizations = () => axios.get(`${BASE}/master-organizations/export`, { responseType: 'blob' });
 
 // Kho dữ liệu dùng chung — Phòng thi
 const getMasterRooms = (organizationId) => axios.get(`${BASE}/master-rooms`, { params: { master_organization_id: organizationId } });
@@ -53,6 +60,10 @@ const importMasterRooms = (organizationId, file) => {
   formData.append('file', file);
   return axios.post(`${BASE}/master-rooms/import`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 };
+const downloadMasterRoomImportTemplate = (organizationId) =>
+  axios.get(`${BASE}/master-rooms/import/template`, { params: { master_organization_id: organizationId }, responseType: 'blob' });
+const exportMasterRooms = (organizationId) =>
+  axios.get(`${BASE}/master-rooms/export`, { params: { master_organization_id: organizationId }, responseType: 'blob' });
 
 // Kho dữ liệu dùng chung — Điểm trưởng
 const getMasterMonitors = (organizationId) =>
@@ -90,6 +101,8 @@ const importMasterSubjectsExcel = (file) => {
   formData.append('file', file);
   return axios.post(`${BASE}/master-subjects/import-excel`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
 };
+const downloadMasterSubjectImportTemplate = () => axios.get(`${BASE}/master-subjects/import/template`, { responseType: 'blob' });
+const exportMasterSubjects = () => axios.get(`${BASE}/master-subjects/export`, { responseType: 'blob' });
 
 // Nhật ký thao tác Super Admin
 const getActivityLogs = (params) => axios.get(`${BASE}/activity-logs`, { params });
@@ -120,11 +133,16 @@ const systemAdminService = {
   createMasterOrganization,
   updateMasterOrganization,
   deleteMasterOrganization,
+  downloadMasterOrganizationImportTemplate,
+  importMasterOrganizations,
+  exportMasterOrganizations,
   getMasterRooms,
   createMasterRoom,
   updateMasterRoom,
   deleteMasterRoom,
   importMasterRooms,
+  downloadMasterRoomImportTemplate,
+  exportMasterRooms,
   getMasterMonitors,
   createMasterMonitor,
   updateMasterMonitor,
@@ -139,6 +157,8 @@ const systemAdminService = {
   syncMasterSubjects,
   importMasterSubjects,
   importMasterSubjectsExcel,
+  downloadMasterSubjectImportTemplate,
+  exportMasterSubjects,
   getActivityLogs,
   getActivityLogActions
 };

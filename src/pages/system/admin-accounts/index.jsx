@@ -34,6 +34,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import systemAdminService from 'services/system-admin.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 
 // ==============================|| SUPER ADMIN - TÀI KHOẢN ADMIN CỦA TỪNG DB KỲ THI ||============================== //
 // Chọn 1 DB bất kỳ trong danh mục để quản lý tài khoản ADMIN của riêng DB đó — KHÔNG cần đặt DB đó làm
@@ -43,6 +44,7 @@ const emptyValues = { code: '', name: '', password: '', status: true };
 
 const AdminAccountsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [databases, setDatabases] = useState([]);
   const [selectedDbId, setSelectedDbId] = useState('');
   const [rows, setRows] = useState([]);
@@ -89,7 +91,13 @@ const AdminAccountsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá tài khoản ADMIN "${row.name}" (${row.code}) của database này?`)) return;
+    const ok = await confirm({
+      title: 'Xoá tài khoản ADMIN',
+      message: `Xoá tài khoản ADMIN "${row.name}" (${row.code}) của database này?`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => systemAdminService.deleteAdminAccount(selectedDbId, row.id), 'Đang xoá tài khoản... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });

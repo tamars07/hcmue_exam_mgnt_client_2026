@@ -8,6 +8,7 @@ import {
   Dialog,
   DialogActions,
   DialogContent,
+  DialogContentText,
   DialogTitle,
   FormControlLabel,
   IconButton,
@@ -25,7 +26,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import { DeleteOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -36,20 +37,34 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import systemAdminService from 'services/system-admin.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 
 // ==============================|| KHO DỮ LIỆU DÙNG CHUNG - PHÒNG THI ||============================== //
 // Mã phòng luôn có tiền tố "<mã địa điểm thi>." — người dùng chỉ nhập phần hậu tố, backend tự ghép.
 
 const emptyValues = { suffix: '', name: '', no_slots: 0, desc: '', status: true };
 
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 const RoomsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [organizations, setOrganizations] = useState([]);
   const [organizationId, setOrganizationId] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [importResult, setImportResult] = useState(null);
 
   useEffect(() => {
     systemAdminService
@@ -80,14 +95,35 @@ const RoomsPage = () => {
 
   const selectedOrganization = organizations.find((o) => o.id === organizationId);
 
+  const handleDownloadTemplate = async () => {
+    if (!organizationId) return;
+    try {
+      const res = await systemAdminService.downloadMasterRoomImportTemplate(organizationId);
+      downloadBlob(res.data, 'Mau_import_phong_thi.xlsx');
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Tải file mẫu thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
   const handleImport = async (file) => {
     if (!file) return;
     try {
       const res = await withLoading(() => systemAdminService.importMasterRooms(organizationId, file), 'Đang import... Vui lòng chờ');
+      setImportResult(res.data.data);
       openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
       fetchRows();
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Import thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const handleExport = async () => {
+    if (!organizationId) return;
+    try {
+      const res = await withLoading(() => systemAdminService.exportMasterRooms(organizationId), 'Đang xuất file... Vui lòng chờ');
+      downloadBlob(res.data, `Phong_thi_${selectedOrganization?.code || organizationId}_${Date.now()}.xlsx`);
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Xuất file thất bại', variant: 'alert', alert: { color: 'error' } });
     }
   };
 
@@ -103,7 +139,8 @@ const RoomsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá phòng thi "${row.name}" (${row.code})?`)) return;
+    const ok = await confirm({ title: 'Xoá phòng thi', message: `Xoá phòng thi "${row.name}" (${row.code})?`, confirmText: 'Xoá', confirmColor: 'error' });
+    if (!ok) return;
     try {
       await withLoading(() => systemAdminService.deleteMasterRoom(row.id), 'Đang xoá... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
@@ -138,6 +175,12 @@ const RoomsPage = () => {
       title="Phòng thi"
       secondary={
         <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleDownloadTemplate} disabled={!organizationId}>
+            Tải file mẫu
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleExport} disabled={!organizationId}>
+            Xuất Excel
+          </Button>
           <Button component="label" variant="outlined" startIcon={<UploadOutlined />} disabled={!organizationId}>
             Import Excel
             <input
@@ -315,6 +358,32 @@ const RoomsPage = () => {
             </form>
           )}
         </Formik>
+      </Dialog>
+
+      <Dialog open={!!importResult} onClose={() => setImportResult(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Kết quả import phòng thi</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1}>
+            <DialogContentText>Đã import {importResult?.created?.length || 0} phòng thi.</DialogContentText>
+            {importResult?.errors?.length > 0 && (
+              <Stack spacing={0.5}>
+                <Typography variant="body2" color="error.main">
+                  {importResult.errors.length} dòng lỗi, không được import:
+                </Typography>
+                {importResult.errors.map((err) => (
+                  <Typography key={err.row_number} variant="body2" color="error.main">
+                    Dòng {err.row_number}: {err.reasons.join('; ')}
+                  </Typography>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setImportResult(null)}>
+            Đóng
+          </Button>
+        </DialogActions>
       </Dialog>
     </MainCard>
   );

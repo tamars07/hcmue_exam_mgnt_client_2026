@@ -10,7 +10,6 @@ import {
   LoginOutlined,
   EnvironmentOutlined,
   HomeOutlined,
-  TeamOutlined,
   BookOutlined
 } from '@ant-design/icons';
 
@@ -23,7 +22,6 @@ const icons = {
   LoginOutlined,
   EnvironmentOutlined,
   HomeOutlined,
-  TeamOutlined,
   BookOutlined
 };
 
@@ -71,13 +69,6 @@ const system = {
       type: 'item',
       url: '/acp/rooms',
       icon: icons.HomeOutlined
-    },
-    {
-      id: 'system-monitors',
-      title: <FormattedMessage id="system-monitors" defaultMessage="Cán bộ" />,
-      type: 'item',
-      url: '/acp/monitors',
-      icon: icons.TeamOutlined
     },
     {
       id: 'system-subjects',

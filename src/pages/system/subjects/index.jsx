@@ -25,7 +25,7 @@ import {
   Tooltip,
   Typography
 } from '@mui/material';
-import { DeleteOutlined, EditOutlined, PlusOutlined, SyncOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined, SyncOutlined, UploadOutlined } from '@ant-design/icons';
 
 // third-party
 import { Formik } from 'formik';
@@ -36,6 +36,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import systemAdminService from 'services/system-admin.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 
 // ==============================|| KHO DỮ LIỆU DÙNG CHUNG - MÔN THI ||============================== //
 // Nguồn dùng chung cho Môn thi, áp dụng vào 1 DB kỳ thi ở 2 thời điểm: (1) lúc tạo DB mới (xem
@@ -51,8 +52,20 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 const emptyValues = { code: '', name: '', status: true };
 
+const downloadBlob = (blob, filename) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
+
 const SubjectsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -65,6 +78,7 @@ const SubjectsPage = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importResult, setImportResult] = useState(null);
+  const [excelImportResult, setExcelImportResult] = useState(null);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -93,8 +107,13 @@ const SubjectsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá môn thi "${row.name}" khỏi kho dữ liệu dùng chung? (không ảnh hưởng dữ liệu đã đồng bộ vào các DB kỳ thi trước đó)`))
-      return;
+    const ok = await confirm({
+      title: 'Xoá môn thi',
+      message: `Xoá môn thi "${row.name}" khỏi kho dữ liệu dùng chung? (không ảnh hưởng dữ liệu đã đồng bộ vào các DB kỳ thi trước đó)`,
+      confirmText: 'Xoá',
+      confirmColor: 'error'
+    });
+    if (!ok) return;
     try {
       await withLoading(() => systemAdminService.deleteMasterSubject(row.id), 'Đang xoá... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
@@ -168,10 +187,29 @@ const SubjectsPage = () => {
     if (!file) return;
     try {
       const res = await withLoading(() => systemAdminService.importMasterSubjectsExcel(file), 'Đang import... Vui lòng chờ');
+      setExcelImportResult(res.data.data);
       openSnackbar({ open: true, message: res.data.message, variant: 'alert', alert: { color: 'success' } });
       fetchRows();
     } catch (e) {
       openSnackbar({ open: true, message: e?.message || 'Import thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await systemAdminService.downloadMasterSubjectImportTemplate();
+      downloadBlob(res.data, 'Mau_import_mon_thi.xlsx');
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Tải file mẫu thất bại', variant: 'alert', alert: { color: 'error' } });
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await withLoading(() => systemAdminService.exportMasterSubjects(), 'Đang xuất file... Vui lòng chờ');
+      downloadBlob(res.data, `Mon_thi_${Date.now()}.xlsx`);
+    } catch (e) {
+      openSnackbar({ open: true, message: 'Xuất file thất bại', variant: 'alert', alert: { color: 'error' } });
     }
   };
 
@@ -180,6 +218,12 @@ const SubjectsPage = () => {
       title="Môn thi"
       secondary={
         <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleDownloadTemplate}>
+            Tải file mẫu
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadOutlined />} onClick={handleExport}>
+            Xuất Excel
+          </Button>
           <Tooltip title='Cột: ma_mon_thi/ten_mon_thi/su_dung — hoặc code/name/status (đúng file .xlsx xuất từ nút "Xuất file Excel" ở trang Môn học bên qbank)'>
             <Button component="label" variant="outlined" startIcon={<UploadOutlined />}>
               Import Excel
@@ -363,6 +407,37 @@ const SubjectsPage = () => {
               Đóng
             </Button>
           )}
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!excelImportResult} onClose={() => setExcelImportResult(null)} maxWidth="sm" fullWidth>
+        <DialogTitle>Kết quả import môn thi (Excel)</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1}>
+            <Typography variant="body2">
+              Đã tạo mới ({excelImportResult?.created?.length || 0}): {excelImportResult?.created?.join(', ') || '—'}
+            </Typography>
+            <Typography variant="body2">
+              Đã cập nhật ({excelImportResult?.updated?.length || 0}): {excelImportResult?.updated?.join(', ') || '—'}
+            </Typography>
+            {excelImportResult?.errors?.length > 0 && (
+              <Stack spacing={0.5}>
+                <Typography variant="body2" color="error.main">
+                  {excelImportResult.errors.length} dòng lỗi, không được import:
+                </Typography>
+                {excelImportResult.errors.map((err) => (
+                  <Typography key={err.row_number} variant="body2" color="error.main">
+                    Dòng {err.row_number}: {err.reasons.join('; ')}
+                  </Typography>
+                ))}
+              </Stack>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button variant="contained" onClick={() => setExcelImportResult(null)}>
+            Đóng
+          </Button>
         </DialogActions>
       </Dialog>
 

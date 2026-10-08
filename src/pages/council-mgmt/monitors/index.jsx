@@ -29,6 +29,7 @@ import MainCard from 'components/MainCard';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
+import useConfirm from 'hooks/useConfirm';
 import useAuth from 'hooks/useAuth';
 import useSubjects from 'hooks/useSubjects';
 
@@ -51,6 +52,7 @@ const downloadBlob = (blob, filename) => {
 
 const MonitorsPage = () => {
   const { withLoading } = useLoadingOverlay();
+  const { confirm } = useConfirm();
   const { user } = useAuth();
   const isAdmin = Boolean(user?.roles?.includes('ADMIN'));
   const subjects = useSubjects();
@@ -116,7 +118,8 @@ const MonitorsPage = () => {
   };
 
   const handleDelete = async (row) => {
-    if (!window.confirm(`Xoá tài khoản "${row.name}" (${row.code})?`)) return;
+    const ok = await confirm({ title: 'Xoá tài khoản', message: `Xoá tài khoản "${row.name}" (${row.code})?`, confirmText: 'Xoá', confirmColor: 'error' });
+    if (!ok) return;
     try {
       await withLoading(() => councilMgmtService.deleteMonitor(row.id), 'Đang xoá tài khoản... Vui lòng chờ');
       openSnackbar({ open: true, message: 'Đã xoá', variant: 'alert', alert: { color: 'success' } });
