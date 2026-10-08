@@ -9,6 +9,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
   FormControlLabel,
   IconButton,
   InputAdornment,
@@ -16,7 +17,8 @@ import {
   Stack,
   Switch,
   TextField,
-  Tooltip
+  Tooltip,
+  Typography
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { DeleteOutlined, DownloadOutlined, EditOutlined, PlusOutlined, UnorderedListOutlined } from '@ant-design/icons';
@@ -33,6 +35,41 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import useConfirm from 'hooks/useConfirm';
 
 // ==============================|| COUNCILS - LIST ||============================== //
+
+// Khi request dùng responseType: 'blob' (tải file), lỗi server trả JSON vẫn bị axios decode thành
+// Blob theo đúng responseType đã khai báo — phải tự đọc lại thành text rồi parse để lấy đúng message
+// cụ thể từ backend, không thì chỉ còn mỗi message mặc định chung ở catch.
+const extractBlobErrorMessage = async (e) => {
+  if (e instanceof Blob) {
+    try {
+      const text = await e.text();
+      return JSON.parse(text)?.message;
+    } catch {
+      return null;
+    }
+  }
+  return e?.message;
+};
+
+// Hiện/nhập ngày theo DD/MM/YYYY (quy ước VN) trong lúc Formik vẫn giữ giá trị gốc dạng ISO
+// (YYYY-MM-DD) để Yup.date()/API không đổi — input type="date" của trình duyệt hiện theo locale hệ
+// điều hành (có máy ra MM/DD/YYYY), không có cách ép định dạng hiển thị, nên phải tự làm ô nhập chữ
+// có dấu "/" tự chèn khi gõ.
+const isoToDisplayDate = (iso) => {
+  const [y, m, d] = String(iso || '').slice(0, 10).split('-');
+  return y && m && d ? `${d}/${m}/${y}` : '';
+};
+const displayDateToIso = (display) => {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display || '');
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : '';
+};
+const maskDateInput = (raw) => {
+  const digits = raw.replace(/\D/g, '').slice(0, 8);
+  const d = digits.slice(0, 2);
+  const m = digits.slice(2, 4);
+  const y = digits.slice(4, 8);
+  return [d, m, y].filter(Boolean).join('/');
+};
 
 const emptyValues = {
   code: '',
@@ -63,6 +100,9 @@ const CouncilsPage = () => {
   const [exportingCode, setExportingCode] = useState(null);
   // Phần người dùng gõ tiếp sau prefix "{mã địa điểm thi}." khi tạo mới hội đồng thi.
   const [codeSuffix, setCodeSuffix] = useState('');
+  // Chữ hiện trên ô Ngày bắt đầu/Ngày kết thúc (DD/MM/YYYY) — tách khỏi Formik vì Formik giữ ISO.
+  const [startDateText, setStartDateText] = useState('');
+  const [finishDateText, setFinishDateText] = useState('');
 
   useEffect(() => {
     councilMgmtService
@@ -112,6 +152,8 @@ const CouncilsPage = () => {
     setEditing(null);
     setMonitors([]);
     setCodeSuffix('');
+    setStartDateText('');
+    setFinishDateText('');
     setDialogOpen(true);
   };
 
@@ -119,6 +161,8 @@ const CouncilsPage = () => {
     setEditing(row);
     fetchMonitorsForOrg(row.organization_code);
     setCodeSuffix('');
+    setStartDateText(isoToDisplayDate(row.start_at));
+    setFinishDateText(isoToDisplayDate(row.finish_at));
     setDialogOpen(true);
   };
 
@@ -178,9 +222,10 @@ const CouncilsPage = () => {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (e) {
+      const message = await extractBlobErrorMessage(e);
       openSnackbar({
         open: true,
-        message: e?.message || 'Tải tài khoản cán bộ coi thi thất bại',
+        message: message || 'Tải tài khoản cán bộ coi thi thất bại',
         variant: 'alert',
         alert: { color: 'error' }
       });
@@ -205,28 +250,40 @@ const CouncilsPage = () => {
     {
       field: 'actions',
       headerName: '',
-      width: 190,
+      width: 400,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <Stack direction="row" spacing={0.5}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Tooltip title="Xem/chỉnh ngày giờ, gán phòng thi cho từng ca thi của hội đồng này">
+            <Button
+              size="small"
+              variant="contained"
+              color="primary"
+              startIcon={<UnorderedListOutlined />}
+              onClick={() => navigate(`/council-mgmt/councils/${params.row.code}/turns`)}
+            >
+              Quản trị ca thi
+            </Button>
+          </Tooltip>
+          <Tooltip title="Xuất phiếu tài khoản giám thị + điểm trưởng (toàn hội đồng)">
+            <span>
+              <Button
+                size="small"
+                variant="contained"
+                startIcon={<DownloadOutlined />}
+                disabled={exportingCode === params.row.code}
+                onClick={() => handleExportMonitorAccounts(params.row)}
+                sx={{ bgcolor: '#107C41', '&:hover': { bgcolor: '#0b5c30' } }}
+              >
+                Xuất phiếu
+              </Button>
+            </span>
+          </Tooltip>
+          <Divider orientation="vertical" flexItem />
           <Tooltip title="Sửa">
             <IconButton size="small" onClick={() => handleOpenEdit(params.row)}>
               <EditOutlined />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Quản trị ca thi">
-            <IconButton size="small" onClick={() => navigate(`/council-mgmt/councils/${params.row.code}/turns`)}>
-              <UnorderedListOutlined />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Xuất phiếu giám thị (toàn hội đồng)">
-            <IconButton
-              size="small"
-              disabled={exportingCode === params.row.code}
-              onClick={() => handleExportMonitorAccounts(params.row)}
-            >
-              <DownloadOutlined />
             </IconButton>
           </Tooltip>
           <Tooltip title="Xoá">
@@ -281,8 +338,11 @@ const CouncilsPage = () => {
           validationSchema={Yup.object().shape({
             code: Yup.string().max(50).required('Bắt buộc nhập mã'),
             no_turns: Yup.number().min(1).max(20).required('Bắt buộc nhập số ca thi'),
-            start_at: Yup.date().required('Bắt buộc nhập ngày bắt đầu'),
-            finish_at: Yup.date().min(Yup.ref('start_at'), 'Phải sau ngày bắt đầu').required('Bắt buộc nhập ngày kết thúc'),
+            start_at: Yup.date().typeError('Ngày bắt đầu chưa hợp lệ (định dạng DD/MM/YYYY)').required('Bắt buộc nhập ngày bắt đầu'),
+            finish_at: Yup.date()
+              .typeError('Ngày kết thúc chưa hợp lệ (định dạng DD/MM/YYYY)')
+              .min(Yup.ref('start_at'), 'Phải sau ngày bắt đầu')
+              .required('Bắt buộc nhập ngày kết thúc'),
             organization_code: Yup.string().required('Bắt buộc chọn điểm thi'),
             monitor_id: Yup.number().required('Bắt buộc chọn điểm trưởng')
           })}
@@ -390,24 +450,33 @@ const CouncilsPage = () => {
                   )}
                   <TextField
                     fullWidth
-                    type="date"
                     label="Ngày bắt đầu"
-                    name="start_at"
-                    InputLabelProps={{ shrink: true }}
-                    value={values.start_at ? String(values.start_at).slice(0, 10) : ''}
-                    onChange={handleChange}
+                    name="start_at_display"
+                    placeholder="DD/MM/YYYY"
+                    value={startDateText}
+                    onChange={(e) => {
+                      const masked = maskDateInput(e.target.value);
+                      setStartDateText(masked);
+                      setFieldValue('start_at', displayDateToIso(masked));
+                    }}
                     onBlur={handleBlur}
                     error={Boolean(touched.start_at && errors.start_at)}
-                    helperText={touched.start_at && errors.start_at}
+                    helperText={
+                      (touched.start_at && errors.start_at) ||
+                      'Khung "đang diễn ra" của cả hội đồng thi — giám thị chỉ thấy hội đồng này trong danh sách chọn lúc đăng nhập nếu thời điểm hiện tại nằm trong khung Ngày bắt đầu → Ngày kết thúc. Đặt rộng đủ bao trùm mọi ca thi con, kể cả ca thêm sau.'
+                    }
                   />
                   <TextField
                     fullWidth
-                    type="date"
                     label="Ngày kết thúc"
-                    name="finish_at"
-                    InputLabelProps={{ shrink: true }}
-                    value={values.finish_at ? String(values.finish_at).slice(0, 10) : ''}
-                    onChange={handleChange}
+                    name="finish_at_display"
+                    placeholder="DD/MM/YYYY"
+                    value={finishDateText}
+                    onChange={(e) => {
+                      const masked = maskDateInput(e.target.value);
+                      setFinishDateText(masked);
+                      setFieldValue('finish_at', displayDateToIso(masked));
+                    }}
                     onBlur={handleBlur}
                     error={Boolean(touched.finish_at && errors.finish_at)}
                     helperText={touched.finish_at && errors.finish_at}
@@ -421,10 +490,16 @@ const CouncilsPage = () => {
                     onChange={handleChange}
                     onBlur={handleBlur}
                   />
-                  <FormControlLabel
-                    control={<Switch checked={!!values.is_autostart} onChange={(e) => setFieldValue('is_autostart', e.target.checked)} />}
-                    label="Khởi tạo tự động"
-                  />
+                  <Stack spacing={0.5}>
+                    <FormControlLabel
+                      control={<Switch checked={!!values.is_autostart} onChange={(e) => setFieldValue('is_autostart', e.target.checked)} />}
+                      label="Tự động kích hoạt phòng thi"
+                    />
+                    <Typography variant="caption" color="text.secondary">
+                      Bật: mọi phòng thi của hội đồng này được coi như đã kích hoạt ngay khi ca thi bắt đầu — không cần bấm “Kích hoạt
+                      phòng thi” cho từng phòng nữa. Tắt (mặc định): vẫn phải kích hoạt thủ công từng phòng sau khi bắt đầu ca thi.
+                    </Typography>
+                  </Stack>
                   <FormControlLabel
                     control={<Switch checked={!!values.status} onChange={(e) => setFieldValue('status', e.target.checked)} />}
                     label="Sử dụng"

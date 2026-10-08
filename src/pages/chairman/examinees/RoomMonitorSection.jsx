@@ -1,12 +1,13 @@
 import PropTypes from 'prop-types';
 
 // material-ui
-import { Alert, Box, Button, Grid, Stack, Typography } from '@mui/material';
-import { ClockCircleOutlined, SyncOutlined } from '@ant-design/icons';
+import { Alert, Box, Button, Chip, Grid, Stack, Typography } from '@mui/material';
+import { CheckCircleOutlined, ClockCircleOutlined, PauseCircleOutlined, StopOutlined, SyncOutlined } from '@ant-design/icons';
 
 // project import
 import ExamineeCard from './ExamineeCard';
 import ForceLightTheme from 'components/ForceLightTheme';
+import { getRoomExamStatus } from 'utils/council-schedule';
 
 // ==============================|| GIÁM SÁT KÌ THI - 1 PHÒNG THI ||============================== //
 
@@ -23,6 +24,13 @@ const StatusBox = ({ title, count, color }) => (
 
 StatusBox.propTypes = { title: PropTypes.string, count: PropTypes.number, color: PropTypes.string };
 
+const TURN_STATUS_ICONS = {
+  pending: <ClockCircleOutlined />,
+  not_exam_yet: <PauseCircleOutlined />,
+  running: <CheckCircleOutlined />,
+  ended: <StopOutlined />
+};
+
 const summarize = (examinees) => ({
   total: examinees.length,
   backup: examinees.filter((e) => e.is_backup).length,
@@ -34,6 +42,7 @@ const summarize = (examinees) => ({
 
 const RoomMonitorSection = ({
   room,
+  turn,
   readOnly,
   onDetail,
   onViewLogs,
@@ -45,6 +54,7 @@ const RoomMonitorSection = ({
 }) => {
   const examinees = room.examinees || [];
   const stats = summarize(examinees);
+  const roomStatus = turn ? getRoomExamStatus(turn, room) : null;
 
   return (
     <Box sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
@@ -56,11 +66,14 @@ const RoomMonitorSection = ({
               Ngày thi: {room.turn_date} — Giờ thi: {room.turn_time}
             </Typography>
           </Box>
-          {room.is_active ? (
-            <Alert severity="success">Đã kích hoạt{room.activated_at ? ` lúc ${room.activated_at}` : ''}</Alert>
-          ) : (
-            <Alert severity="warning">Chưa kích hoạt</Alert>
-          )}
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" rowGap={1}>
+            {roomStatus && <Chip size="small" color={roomStatus.color} label={roomStatus.label} icon={TURN_STATUS_ICONS[roomStatus.key]} />}
+            {room.is_active ? (
+              <Alert severity="success">Đã kích hoạt{room.activated_at ? ` lúc ${room.activated_at}` : ''}</Alert>
+            ) : (
+              <Alert severity="warning">Chưa kích hoạt</Alert>
+            )}
+          </Stack>
         </Stack>
       </Box>
 
@@ -125,6 +138,7 @@ const RoomMonitorSection = ({
 
 RoomMonitorSection.propTypes = {
   room: PropTypes.object.isRequired,
+  turn: PropTypes.object,
   readOnly: PropTypes.bool,
   onDetail: PropTypes.func.isRequired,
   onViewLogs: PropTypes.func.isRequired,

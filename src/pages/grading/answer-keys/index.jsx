@@ -1016,20 +1016,21 @@ const AnswerKeysTab = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Cách 2: nhập từ file đề thi mã hoá */}
+      {/* Cách 2: nhập từ file đáp án mã hoá riêng (.key) */}
       <Dialog open={examFileDialogOpen} onClose={() => setExamFileDialogOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle>Nhập đáp án từ file đề thi</DialogTitle>
+        <DialogTitle>Nhập đáp án từ file đáp án (.key)</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Typography variant="body2" color="text.secondary">
-              Dùng cùng file đề thi mã hoá (.dat) và mật khẩu như khi nhập đề — chỉ đồng bộ đáp án của các câu ĐÃ TỒN TẠI trong hệ thống,
-              không tạo câu/đề mới. Câu tự luận không áp dụng.
+              Dùng file đáp án mã hoá riêng (.key) xuất từ phân hệ ngân hàng đề — KHÁC file .dat dùng khi nhận đề (file đó từ nay không còn
+              mang đáp án). Mật khẩu .key riêng với mật khẩu .dat. Chỉ đồng bộ đáp án của các câu ĐÃ TỒN TẠI trong hệ thống, không tạo
+              câu/đề mới. Câu tự luận không áp dụng.
             </Typography>
             <Button component="label" variant="outlined" startIcon={<UploadOutlined />} sx={{ alignSelf: 'flex-start' }}>
-              {examFile ? examFile.name : 'Chọn file .dat'}
+              {examFile ? examFile.name : 'Chọn file .key'}
               <input
                 type="file"
-                accept=".dat"
+                accept=".key"
                 hidden
                 onChange={(e) => {
                   setExamFile(e.target.files?.[0] || null);
@@ -1066,8 +1067,19 @@ const AnswerKeysTab = () => {
                 <b>{examFilePreview.without_answer_key}</b> câu KHÔNG có đáp án trong file này.
                 {examFilePreview.with_answer_key === 0 && examFilePreview.matched_in_system > 0 && (
                   <Box component="div" sx={{ mt: 0.5, fontWeight: 600 }}>
-                    File này không mang dữ liệu đáp án nào — có thể bạn đang chọn nhầm file đề gốc (phân phối cho thí sinh) thay vì file đáp
-                    án.
+                    File này không mang dữ liệu đáp án nào — có thể bạn đang chọn nhầm file .dat (nhận đề, phân phối cho thí sinh) thay vì
+                    file .key (đáp án).
+                  </Box>
+                )}
+                {examFilePreview.question_marks_count > 0 && (
+                  <Box component="div" sx={{ mt: 0.5 }}>
+                    Kèm theo {examFilePreview.question_marks_count} thang điểm sẽ được đồng bộ.
+                  </Box>
+                )}
+                {examFilePreview.test_form_parts_count > 0 && (
+                  <Box component="div" sx={{ mt: 0.5 }}>
+                    Kèm theo {examFilePreview.test_form_parts_count} cấu trúc đề (test_form_parts) sẽ được đồng bộ — dùng cho Công thức tính
+                    điểm.
                   </Box>
                 )}
                 {examFilePreview.missing_answer_key_samples?.length > 0 && (

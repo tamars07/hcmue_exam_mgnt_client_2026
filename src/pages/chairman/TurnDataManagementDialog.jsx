@@ -24,8 +24,8 @@ import useLoadingOverlay from 'hooks/useLoadingOverlay';
 
 // ==============================|| QUẢN LÝ DỮ LIỆU CA THI ||============================== //
 // Sao lưu Dữ liệu bài thi (chỉ sau khi ca thi kết thúc) -> Dọn dẹp dữ liệu (chỉ sau khi đã sao lưu).
-// Bắt đầu/Kết thúc/Mở lại ca thi đã chuyển sang trang "Quản lý ca thi" — ở đây chỉ hiển thị lại
-// trạng thái hiện tại (đọc, không thao tác) để biết còn thiếu bước nào.
+// Cùng trang "Quản lý ca thi" với Bắt đầu/Kết thúc/Mở lại ca thi (trước ở trang "Giám sát ca thi",
+// chuyển qua đây để gom mọi thao tác theo vòng đời 1 ca thi vào cùng 1 chỗ).
 
 const TURN_STATUS_ICONS = {
   pending: <ClockCircleOutlined />,
@@ -50,7 +50,9 @@ const TurnDataManagementDialog = ({ open, onClose, turnCode, onChanged }) => {
     chairmanService
       .getTurnDataStatus(turnCode)
       .then((res) => setStatus(res.data.data))
-      .catch(() => openSnackbar({ open: true, message: 'Không tải được trạng thái dữ liệu ca thi', variant: 'alert', alert: { color: 'error' } }))
+      .catch(() =>
+        openSnackbar({ open: true, message: 'Không tải được trạng thái dữ liệu ca thi', variant: 'alert', alert: { color: 'error' } })
+      )
       .finally(() => setLoading(false));
   }, [turnCode]);
 
@@ -86,7 +88,12 @@ const TurnDataManagementDialog = ({ open, onClose, turnCode, onChanged }) => {
       a.download = `${turnCode}_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}.bak`;
       a.click();
       window.URL.revokeObjectURL(url);
-      openSnackbar({ open: true, message: 'Đã sao lưu dữ liệu bài thi, file đang được tải về', variant: 'alert', alert: { color: 'success' } });
+      openSnackbar({
+        open: true,
+        message: 'Đã sao lưu dữ liệu bài thi, file đang được tải về',
+        variant: 'alert',
+        alert: { color: 'success' }
+      });
       setConfirmAction(null);
       refresh();
     } catch (e) {
@@ -130,11 +137,6 @@ const TurnDataManagementDialog = ({ open, onClose, turnCode, onChanged }) => {
                     Trạng thái ca thi:
                   </Typography>
                   <Chip size="small" color={statusColor} label={statusLabel} icon={TURN_STATUS_ICONS[statusKey]} />
-                  {!ended && (
-                    <Typography variant="caption" color="text.secondary">
-                      (Bắt đầu/Kết thúc/Mở lại ca thi ở trang &quot;Quản lý ca thi&quot;)
-                    </Typography>
-                  )}
                 </Stack>
 
                 <Divider />
@@ -226,13 +228,19 @@ const TurnDataManagementDialog = ({ open, onClose, turnCode, onChanged }) => {
             <Alert severity="error">
               Hệ thống sẽ tự động sao lưu toàn bộ database hiện tại (giống Backup ở Quản trị hệ thống), sau đó xoá sạch dữ liệu đề thi/câu
               hỏi/kết quả dùng chung (activity_logs, answer_keys, council_turn_test_mixes, examinee_answers, examinee_test_mixes, questions,
-              test_mixes) để
-              giải phóng cho ca thi tiếp theo. Không thể hoàn tác thao tác này (chỉ khôi phục được từ bản sao lưu toàn DB vừa tạo).
+              test_mixes) để giải phóng cho ca thi tiếp theo. Không thể hoàn tác thao tác này (chỉ khôi phục được từ bản sao lưu toàn DB vừa
+              tạo).
             </Alert>
             <Typography variant="body2">
               Gõ lại chính xác mã ca thi <strong>{turnCode}</strong> để xác nhận:
             </Typography>
-            <TextField fullWidth value={cleanupConfirmText} onChange={(e) => setCleanupConfirmText(e.target.value)} placeholder={turnCode} autoFocus />
+            <TextField
+              fullWidth
+              value={cleanupConfirmText}
+              onChange={(e) => setCleanupConfirmText(e.target.value)}
+              placeholder={turnCode}
+              autoFocus
+            />
             <TextField
               fullWidth
               multiline

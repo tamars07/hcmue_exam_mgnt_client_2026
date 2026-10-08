@@ -25,6 +25,7 @@ import {
   CaretRightOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
+  DatabaseOutlined,
   DownOutlined,
   FileDoneOutlined,
   FileExclamationOutlined,
@@ -42,6 +43,7 @@ import { openSnackbar } from 'api/snackbar';
 import chairmanService from 'services/chairman.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
 import { isCouncilRunningToday, formatTurnLabel, isTurnToday, getTurnDataStatus } from 'utils/council-schedule';
+import TurnDataManagementDialog from './TurnDataManagementDialog';
 
 // ==============================|| ĐIỂM TRƯỞNG - QUẢN LÝ CA THI ||============================== //
 
@@ -120,6 +122,9 @@ const ChairmanRoomsPage = () => {
   const [lifecycleDialog, setLifecycleDialog] = useState(null);
   const [lifecycleMessage, setLifecycleMessage] = useState('');
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
+
+  // Mã ca thi đang mở dialog "Quản lý dữ liệu" (Sao lưu Dữ liệu bài thi / Dọn dẹp dữ liệu).
+  const [dataManagementTurnCode, setDataManagementTurnCode] = useState(null);
 
   useEffect(() => {
     chairmanService
@@ -454,6 +459,17 @@ const ChairmanRoomsPage = () => {
                         </span>
                       </Tooltip>
                     )}
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<DatabaseOutlined />}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDataManagementTurnCode(turn.code);
+                      }}
+                    >
+                      Quản lý dữ liệu
+                    </Button>
                   </Stack>
                 </Stack>
               </AccordionSummary>
@@ -645,6 +661,13 @@ const ChairmanRoomsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <TurnDataManagementDialog
+        open={!!dataManagementTurnCode}
+        onClose={() => setDataManagementTurnCode(null)}
+        turnCode={dataManagementTurnCode}
+        onChanged={refreshTurns}
+      />
     </MainCard>
   );
 };

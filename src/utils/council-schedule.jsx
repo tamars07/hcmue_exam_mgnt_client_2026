@@ -28,11 +28,27 @@ export const isCouncilRunningToday = (council) => {
 
 // Trạng thái vòng đời thao tác dữ liệu của 1 ca thi (started_at/ended_at) — khác với lịch thi
 // (start_at): đây là cờ do điểm trưởng chủ động Bắt đầu/Kết thúc/Mở lại ở "Quản lý dữ liệu" (Giám
-// sát kì thi), dùng chung để hiển thị nhãn trạng thái ở các trang danh sách ca thi khác.
+// sát kì thi), dùng chung để hiển thị nhãn trạng thái ở các trang danh sách ca thi khác. "Chưa
+// thi"/"Đang thi" dùng turn.has_active_room (CÓ phòng bất kỳ nào đã kích hoạt) — hợp lý cho 1 dòng
+// đại diện cả ca thi (trang danh sách ca thi), nhưng KHÔNG đúng khi hiển thị cho TỪNG phòng riêng lẻ
+// (xem getRoomExamStatus bên dưới, dùng ở trang Giám sát ca thi).
 export const getTurnDataStatus = (turn) => {
   if (turn?.ended_at) return { key: 'ended', label: 'Kết thúc', color: 'error' };
   if (turn?.started_at) {
     if (turn?.has_active_room) return { key: 'running', label: 'Đang thi', color: 'success' };
+    return { key: 'not_exam_yet', label: 'Chưa thi', color: 'warning' };
+  }
+  return { key: 'pending', label: 'Chưa bắt đầu', color: 'default' };
+};
+
+// Trạng thái của 1 PHÒNG THI cụ thể trong 1 ca thi — "Chưa bắt đầu"/"Kết thúc" là trạng thái CHUNG
+// của cả ca thi (mọi phòng như nhau), nhưng "Chưa thi"/"Đang thi" phải xét riêng room.is_active của
+// chính phòng đó: ca thi đã bắt đầu không có nghĩa MỌI phòng đã kích hoạt — phòng chưa kích hoạt vẫn
+// "Chưa thi" dù phòng khác cùng ca đã "Đang thi".
+export const getRoomExamStatus = (turn, room) => {
+  if (turn?.ended_at) return { key: 'ended', label: 'Kết thúc', color: 'error' };
+  if (turn?.started_at) {
+    if (room?.is_active) return { key: 'running', label: 'Đang thi', color: 'success' };
     return { key: 'not_exam_yet', label: 'Chưa thi', color: 'warning' };
   }
   return { key: 'pending', label: 'Chưa bắt đầu', color: 'default' };
