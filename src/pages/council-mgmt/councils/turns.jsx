@@ -53,6 +53,7 @@ import * as Yup from 'yup';
 
 // project import
 import MainCard from 'components/MainCard';
+import ImportTurnExamineesDialog from './ImportTurnExamineesDialog';
 import { openSnackbar } from 'api/snackbar';
 import councilMgmtService from 'services/council-mgmt.service';
 import useLoadingOverlay from 'hooks/useLoadingOverlay';
@@ -123,6 +124,10 @@ const CouncilTurnsPage = () => {
 
   // Thêm ca thi thủ công (ngoài số ca đã tự sinh khi tạo hội đồng thi).
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  // Import danh sách thí sinh từ Excel (kèm tự cấu hình ngày giờ/phòng thi theo cột CA THI/NGÀY
+  // THI/GIỜ THI/PHÒNG THI) — khác hẳn trang "Tài khoản thí sinh".
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const fetchTurns = useCallback(async () => {
     try {
@@ -365,6 +370,9 @@ const CouncilTurnsPage = () => {
         <Stack direction="row" spacing={1}>
           <Button variant="outlined" startIcon={<PlusOutlined />} onClick={() => setCreateDialogOpen(true)}>
             Thêm ca thi
+          </Button>
+          <Button variant="outlined" startIcon={<FileExcelOutlined />} onClick={() => setImportDialogOpen(true)}>
+            Import Danh sách thí sinh
           </Button>
           <Link component={RouterLink} to="/council-mgmt/councils" underline="none">
             <Button startIcon={<ArrowLeftOutlined />}>Quay lại hội đồng thi</Button>
@@ -765,6 +773,13 @@ const CouncilTurnsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <ImportTurnExamineesDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        councilCode={councilCode}
+        onImported={fetchTurns}
+      />
     </MainCard>
   );
 };

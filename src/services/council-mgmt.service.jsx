@@ -56,6 +56,17 @@ const exportCouncilTurnRoomAccountsZip = (ids) =>
 const exportCouncilTurnMonitorAccounts = (councilTurnCode) =>
   axios.get(`${BASE}/council-turns/${councilTurnCode}/export-monitor-accounts`, { responseType: 'blob' });
 
+// Import danh sách thí sinh TỪ TRANG QUẢN TRỊ CA THI — khác hẳn importExamineesPreview/Commit bên
+// dưới (trang "Tài khoản thí sinh"): dùng chung khung mẫu Excel nhưng tự cấu hình ngày giờ/phòng thi
+// theo cột CA THI (số thứ tự)/NGÀY THI/GIỜ THI/PHÒNG THI, tự sinh Tài khoản/Mật khẩu + tài khoản dự
+// phòng, không cần chọn sẵn ca thi/phòng thi.
+const importTurnExamineesPreview = (councilCode, formData) =>
+  axios.post(`${BASE}/councils/${councilCode}/turns/import-examinees/preview`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+const importTurnExamineesCommit = (councilCode, payload) =>
+  axios.post(`${BASE}/councils/${councilCode}/turns/import-examinees/commit`, payload);
+
 // Examinees (thí sinh)
 const getExaminees = (params) => axios.get(`${BASE}/examinees`, { params: toListParams(params) });
 const createExaminee = (data) => axios.post(`${BASE}/examinees`, data);
@@ -114,6 +125,8 @@ const councilMgmtService = {
   exportCouncilTurnRoomAccounts,
   exportCouncilTurnRoomAccountsZip,
   exportCouncilTurnMonitorAccounts,
+  importTurnExamineesPreview,
+  importTurnExamineesCommit,
   getExaminees,
   createExaminee,
   updateExaminee,
