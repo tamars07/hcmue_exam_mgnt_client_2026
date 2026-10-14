@@ -129,6 +129,10 @@ const CouncilTurnsPage = () => {
   // THI/GIỜ THI/PHÒNG THI) — khác hẳn trang "Tài khoản thí sinh".
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
+  // Tải gộp "gói phiếu tài khoản" của cả hội đồng (quantri + điểm trưởng + giám thị mọi ca thi +
+  // phiếu docx thí sinh mọi phòng thi) — thay cho phải tải lẻ từng ca thi/từng phòng.
+  const [downloadingPackage, setDownloadingPackage] = useState(false);
+
   const fetchTurns = useCallback(async () => {
     try {
       const res = await councilMgmtService.getCouncilTurns(councilCode);
@@ -363,6 +367,34 @@ const CouncilTurnsPage = () => {
     }
   };
 
+  const handleDownloadPackage = async () => {
+    setDownloadingPackage(true);
+    try {
+      const res = await withLoading(
+        () => councilMgmtService.exportCouncilAccountsZip(councilCode),
+        'Đang đóng gói gói phiếu tài khoản (.zip)... Vui lòng chờ'
+      );
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/zip' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${councilCode}-goi-phieu-tai-khoan.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      openSnackbar({
+        open: true,
+        message: e?.message || 'Tải gói phiếu tài khoản thất bại',
+        variant: 'alert',
+        alert: { color: 'error' }
+      });
+    } finally {
+      setDownloadingPackage(false);
+    }
+  };
+
   return (
     <MainCard
       title={council ? `Ca thi - Hội đồng thi ${council.code} - ${council.desc || ''}` : 'Ca thi'}
@@ -373,6 +405,9 @@ const CouncilTurnsPage = () => {
           </Button>
           <Button variant="outlined" startIcon={<FileExcelOutlined />} onClick={() => setImportDialogOpen(true)}>
             Import Danh sách thí sinh
+          </Button>
+          <Button variant="contained" startIcon={<FileZipOutlined />} disabled={downloadingPackage} onClick={handleDownloadPackage}>
+            {downloadingPackage ? 'Đang đóng gói...' : 'Tải gói phiếu tài khoản'}
           </Button>
           <Link component={RouterLink} to="/council-mgmt/councils" underline="none">
             <Button startIcon={<ArrowLeftOutlined />}>Quay lại hội đồng thi</Button>
@@ -454,9 +489,7 @@ const CouncilTurnsPage = () => {
                         <Checkbox
                           checked={allSelected}
                           indeterminate={someSelected}
-                          onChange={(e) =>
-                            setSelectedZipIds(e.target.checked ? details.map((d) => d.council_turn_room_id) : [])
-                          }
+                          onChange={(e) => setSelectedZipIds(e.target.checked ? details.map((d) => d.council_turn_room_id) : [])}
                         />
                       }
                       label="Chọn tất cả"

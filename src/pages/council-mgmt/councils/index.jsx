@@ -56,7 +56,9 @@ const extractBlobErrorMessage = async (e) => {
 // điều hành (có máy ra MM/DD/YYYY), không có cách ép định dạng hiển thị, nên phải tự làm ô nhập chữ
 // có dấu "/" tự chèn khi gõ.
 const isoToDisplayDate = (iso) => {
-  const [y, m, d] = String(iso || '').slice(0, 10).split('-');
+  const [y, m, d] = String(iso || '')
+    .slice(0, 10)
+    .split('-');
   return y && m && d ? `${d}/${m}/${y}` : '';
 };
 const displayDateToIso = (display) => {
@@ -203,20 +205,18 @@ const CouncilsPage = () => {
     }
   };
 
-  const handleExportMonitorAccounts = async (row) => {
+  const handleExportCouncilData = async (row) => {
     setExportingCode(row.code);
     try {
       const res = await withLoading(
-        () => councilMgmtService.exportCouncilMonitorAccounts(row.code),
-        'Đang tải tài khoản cán bộ coi thi... Vui lòng chờ'
+        () => councilMgmtService.exportCouncilDataHd(row.code),
+        'Đang đóng gói dữ liệu hội đồng thi... Vui lòng chờ'
       );
-      const blob = new Blob([res.data], {
-        type: res.headers['content-type'] || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-      });
+      const blob = new Blob([res.data], { type: res.headers['content-type'] || 'application/octet-stream' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${row.code}-Tai-khoan-giam-thi.xlsx`;
+      a.download = `${row.code}.hd`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -225,7 +225,7 @@ const CouncilsPage = () => {
       const message = await extractBlobErrorMessage(e);
       openSnackbar({
         open: true,
-        message: message || 'Tải tài khoản cán bộ coi thi thất bại',
+        message: message || 'Xuất dữ liệu hội đồng thi thất bại',
         variant: 'alert',
         alert: { color: 'error' }
       });
@@ -266,17 +266,17 @@ const CouncilsPage = () => {
               Quản trị ca thi
             </Button>
           </Tooltip>
-          <Tooltip title="Xuất phiếu tài khoản giám thị + điểm trưởng (toàn hội đồng)">
+          <Tooltip title="Xuất file .hd — toàn bộ dữ liệu hội đồng thi, để import sang máy khác đang chạy bản cũ 2026Aug12_LTS">
             <span>
               <Button
                 size="small"
                 variant="contained"
                 startIcon={<DownloadOutlined />}
                 disabled={exportingCode === params.row.code}
-                onClick={() => handleExportMonitorAccounts(params.row)}
+                onClick={() => handleExportCouncilData(params.row)}
                 sx={{ bgcolor: '#107C41', '&:hover': { bgcolor: '#0b5c30' } }}
               >
-                Xuất phiếu
+                Xuất dữ liệu HĐ
               </Button>
             </span>
           </Tooltip>
@@ -496,8 +496,8 @@ const CouncilsPage = () => {
                       label="Tự động kích hoạt phòng thi"
                     />
                     <Typography variant="caption" color="text.secondary">
-                      Bật: mọi phòng thi của hội đồng này được coi như đã kích hoạt ngay khi ca thi bắt đầu — không cần bấm “Kích hoạt
-                      phòng thi” cho từng phòng nữa. Tắt (mặc định): vẫn phải kích hoạt thủ công từng phòng sau khi bắt đầu ca thi.
+                      Bật: mọi phòng thi của hội đồng này được coi như đã kích hoạt ngay khi ca thi bắt đầu — không cần bấm “Kích hoạt phòng
+                      thi” cho từng phòng nữa. Tắt (mặc định): vẫn phải kích hoạt thủ công từng phòng sau khi bắt đầu ca thi.
                     </Typography>
                   </Stack>
                   <FormControlLabel

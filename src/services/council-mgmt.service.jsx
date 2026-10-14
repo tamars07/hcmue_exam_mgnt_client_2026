@@ -32,6 +32,13 @@ const deleteCouncil = (code) => axios.delete(`${BASE}/councils/${code}`);
 // Xuất file Excel tài khoản cán bộ coi thi (kèm điểm trưởng) của TOÀN BỘ ca thi trong 1 hội đồng
 const exportCouncilMonitorAccounts = (councilCode) =>
   axios.get(`${BASE}/councils/${councilCode}/export-monitor-accounts`, { responseType: 'blob' });
+// "Gói phiếu tài khoản" của CẢ hội đồng — quantri + điểm trưởng + giám thị mọi ca thi + phiếu docx
+// thí sinh mọi phòng thi, đóng gói chung vào 1 file .zip
+const exportCouncilAccountsZip = (councilCode) =>
+  axios.get(`${BASE}/councils/${councilCode}/export-accounts-zip`, { responseType: 'blob' });
+// Xuất file .hd — toàn bộ dữ liệu 1 hội đồng thi, dùng để import sang máy khác đang chạy bản cũ
+// 2026Aug12_LTS (xem docblock CouncilController::exportCouncilData bên API)
+const exportCouncilDataHd = (councilCode) => axios.get(`${BASE}/councils/${councilCode}/export-data-hd`, { responseType: 'blob' });
 
 // Council turns (ca thi)
 const getCouncilTurns = (councilCode) => axios.get(`${BASE}/councils/${councilCode}/turns`);
@@ -125,6 +132,8 @@ const councilMgmtService = {
   exportCouncilTurnRoomAccounts,
   exportCouncilTurnRoomAccountsZip,
   exportCouncilTurnMonitorAccounts,
+  exportCouncilAccountsZip,
+  exportCouncilDataHd,
   importTurnExamineesPreview,
   importTurnExamineesCommit,
   getExaminees,
